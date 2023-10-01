@@ -26,7 +26,7 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 
 import appeng.client.Point;
-import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.GuiWidget;
 import appeng.client.gui.Tooltip;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.style.ScreenStyle;
@@ -35,34 +35,16 @@ import appeng.core.localization.GuiText;
 /**
  * A 3x3 toolbox panel attached to the player inventory.
  */
-public class ToolboxPanel implements ICompositeWidget {
+public class ToolboxPanel extends Container {
 
     // Backdrop for the 3x3 toolbox offered by the network-tool
     private final Blitter background;
 
     private final Component toolbeltName;
 
-    // Relative to the origin of the current screen (not window)
-    private Rect2i bounds = new Rect2i(0, 0, 0, 0);
-
     public ToolboxPanel(ScreenStyle style, Component toolbeltName) {
         this.background = style.getImage("toolbox");
         this.toolbeltName = toolbeltName;
-    }
-
-    @Override
-    public void setPosition(Point position) {
-        this.bounds = new Rect2i(position.getX(), position.getY(), bounds.getWidth(), bounds.getHeight());
-    }
-
-    @Override
-    public void setSize(int width, int height) {
-        this.bounds = new Rect2i(bounds.getX(), bounds.getY(), width, height);
-    }
-
-    @Override
-    public Rect2i getBounds() {
-        return bounds;
     }
 
     @Override

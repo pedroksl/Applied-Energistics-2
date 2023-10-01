@@ -2,6 +2,7 @@ package appeng.client.gui.me.items;
 
 import java.util.List;
 
+import appeng.client.gui.GuiRoot;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -12,7 +13,6 @@ import net.minecraft.world.item.Items;
 import appeng.api.config.ActionItems;
 import appeng.client.Point;
 import appeng.client.gui.Icon;
-import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.ToggleButton;
@@ -27,7 +27,7 @@ public class CraftingEncodingPanel extends EncodingModePanel {
     private final ToggleButton substitutionsBtn;
     private final ToggleButton fluidSubstitutionsBtn;
 
-    public CraftingEncodingPanel(PatternEncodingTermScreen<?> screen, WidgetContainer widgets) {
+    public CraftingEncodingPanel(PatternEncodingTermScreen<?> screen, GuiRoot widgets) {
         super(screen, widgets);
 
         // Add buttons for the crafting mode
@@ -49,7 +49,7 @@ public class CraftingEncodingPanel extends EncodingModePanel {
         return GuiText.CraftingPattern.text();
     }
 
-    private ToggleButton createCraftingSubstitutionButton(WidgetContainer widgets) {
+    private ToggleButton createCraftingSubstitutionButton(GuiRoot widgets) {
         var button = new ToggleButton(
                 Icon.SUBSTITUTION_ENABLED,
                 Icon.SUBSTITUTION_DISABLED,
@@ -65,7 +65,7 @@ public class CraftingEncodingPanel extends EncodingModePanel {
         return button;
     }
 
-    private ToggleButton createCraftingFluidSubstitutionButton(WidgetContainer widgets) {
+    private ToggleButton createCraftingFluidSubstitutionButton(GuiRoot widgets) {
         var button = new ToggleButton(
                 Icon.FLUID_SUBSTITUTION_ENABLED,
                 Icon.FLUID_SUBSTITUTION_DISABLED,

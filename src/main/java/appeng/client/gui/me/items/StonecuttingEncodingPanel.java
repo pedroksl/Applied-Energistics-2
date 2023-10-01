@@ -2,6 +2,7 @@ package appeng.client.gui.me.items;
 
 import java.util.Objects;
 
+import appeng.client.gui.GuiRoot;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.client.Minecraft;
@@ -17,7 +18,6 @@ import net.minecraft.world.item.crafting.StonecutterRecipe;
 
 import appeng.client.Point;
 import appeng.client.gui.Tooltip;
-import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.core.localization.GuiText;
@@ -43,7 +43,7 @@ public final class StonecuttingEncodingPanel extends EncodingModePanel {
 
     private final Scrollbar scrollbar;
 
-    public StonecuttingEncodingPanel(PatternEncodingTermScreen<?> screen, WidgetContainer widgets) {
+    public StonecuttingEncodingPanel(PatternEncodingTermScreen<?> screen, GuiRoot widgets) {
         super(screen, widgets);
         this.scrollbar = widgets.addScrollBar("stonecuttingPatternModeScrollbar", Scrollbar.SMALL);
         this.scrollbar.setRange(0, 0, COLS);
@@ -145,8 +145,8 @@ public final class StonecuttingEncodingPanel extends EncodingModePanel {
     private Rect2i getRecipeBounds(int index) {
         var col = index % COLS;
         var row = index / COLS;
-        int slotX = x + 44 + col * BG_SLOT.getSrcWidth();
-        int slotY = y + 8 + row * BG_SLOT.getSrcHeight();
+        int slotX = getLayoutBounds().getX() + 44 + col * BG_SLOT.getSrcWidth();
+        int slotY = getLayoutBounds().getY() + 8 + row * BG_SLOT.getSrcHeight();
         return new Rect2i(slotX, slotY, BG_SLOT.getSrcWidth(), BG_SLOT.getSrcHeight());
     }
 

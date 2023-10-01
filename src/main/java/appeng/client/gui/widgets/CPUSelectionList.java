@@ -14,7 +14,7 @@ import net.minecraft.util.Mth;
 
 import appeng.api.stacks.AmountFormat;
 import appeng.client.Point;
-import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.GuiWidget;
 import appeng.client.gui.Icon;
 import appeng.client.gui.Tooltip;
 import appeng.client.gui.style.Blitter;
@@ -27,7 +27,7 @@ import appeng.core.localization.GuiText;
 import appeng.core.localization.Tooltips;
 import appeng.menu.me.crafting.CraftingStatusMenu;
 
-public class CPUSelectionList implements ICompositeWidget {
+public class CPUSelectionList extends Container {
 
     private static final int ROWS = 6;
 
@@ -38,9 +38,6 @@ public class CPUSelectionList implements ICompositeWidget {
     private final int selectedColor;
     private final Scrollbar scrollbar;
 
-    // Relative to the origin of the current screen (not window)
-    private Rect2i bounds = new Rect2i(0, 0, 0, 0);
-
     public CPUSelectionList(CraftingStatusMenu menu, Scrollbar scrollbar, ScreenStyle style) {
         this.menu = menu;
         this.scrollbar = scrollbar;
@@ -49,21 +46,6 @@ public class CPUSelectionList implements ICompositeWidget {
         this.textColor = style.getColor(PaletteColor.DEFAULT_TEXT_COLOR);
         this.selectedColor = style.getColor(PaletteColor.SELECTION_COLOR).toARGB();
         this.scrollbar.setCaptureMouseWheel(false);
-    }
-
-    @Override
-    public void setPosition(Point position) {
-        this.bounds = new Rect2i(position.getX(), position.getY(), bounds.getWidth(), bounds.getHeight());
-    }
-
-    @Override
-    public void setSize(int width, int height) {
-        this.bounds = new Rect2i(bounds.getX(), bounds.getY(), width, height);
-    }
-
-    @Override
-    public Rect2i getBounds() {
-        return bounds;
     }
 
     @Override

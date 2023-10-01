@@ -18,32 +18,73 @@
 
 package appeng.client.gui;
 
-import java.util.List;
-import java.util.function.Consumer;
-
-import org.jetbrains.annotations.Nullable;
-
+import appeng.client.Point;
+import appeng.client.gui.style.WidgetStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
+import org.jetbrains.annotations.Nullable;
 
-import appeng.client.Point;
+import java.util.List;
+import java.util.OptionalInt;
+import java.util.function.Consumer;
 
-public interface ICompositeWidget {
+public abstract class GuiWidget {
+    @Nullable
+    private String id;
 
-    default boolean isVisible() {
-        return true;
+    @Nullable
+    private GuiWidget parent;
+
+    public OptionalInt getFixedWidth() {
+        return OptionalInt.empty();
     }
 
-    void setPosition(Point position);
+    public OptionalInt getFixedHeight() {
+        return OptionalInt.empty();
+    }
 
-    void setSize(int width, int height);
+    @Nullable
+    private GuiRoot root;
+
+    private boolean layoutInvalid = true;
+
+    public void setRoot(@Nullable GuiRoot root) {
+
+        this.root = root;
+        this.layoutInvalid = true;
+    }
+
+    public abstract boolean isVisible();
+
+    public abstract void setVisible(boolean visible);
 
     /**
-     * @return The area occupied by this widget relative to the dialogs origin.
+     * @return The area occupied by this widget relative to the main dialog bounds.
      */
-    Rect2i getBounds();
+    public abstract Rect2i getLayoutBounds();
+
+    @Nullable
+    public final GuiWidget getParent() {
+        return parent;
+    }
+
+    public void setParent(@Nullable GuiWidget parent) {
+        this.parent = parent;
+    }
+
+    public abstract void setBounds(Rect2i bounds);
+
+    public void setPosition(int x, int y) {
+        var currentBounds = getLayoutBounds();
+        setBounds(new Rect2i(
+                x,
+                y,
+                currentBounds.getWidth(),
+                currentBounds.getHeight()
+        ));
+    }
 
     /**
      * Allows the widget to add exclusion zones, which are used for managing space with other overlay mods such as JEI.
@@ -52,8 +93,8 @@ public interface ICompositeWidget {
      *                       coordinates.
      * @param screenBounds   The bounds of the current screen in window coordinates.
      */
-    default void addExclusionZones(List<Rect2i> exclusionZones, Rect2i screenBounds) {
-        Rect2i bounds = getBounds();
+    public void addExclusionZones(List<Rect2i> exclusionZones, Rect2i screenBounds) {
+        Rect2i bounds = getLayoutBounds();
         if (bounds.getWidth() <= 0 || bounds.getHeight() <= 0) {
             return;
         }
@@ -79,20 +120,20 @@ public interface ICompositeWidget {
      *
      * @param bounds The bounding box of the screen in window coordinates.
      */
-    default void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
+    public void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
     }
 
     /**
      * Drive animations. This is called alongside each client tick, via {@link Screen#tick()}. This is called less often
      * than {@link #updateBeforeRender()}.
      */
-    default void tick() {
+    public void tick() {
     }
 
     /**
      * Perform layout directly before any rendering methods are called.
      */
-    default void updateBeforeRender() {
+    public void updateBeforeRender() {
     }
 
     /**
@@ -103,7 +144,7 @@ public interface ICompositeWidget {
      * @param bounds      The bounds of the current dialog in window coordinates.
      * @param mouse       The current mouse position relative to the dialogs origin.
      */
-    default void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+    public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
     }
 
     /**
@@ -113,7 +154,7 @@ public interface ICompositeWidget {
      * @param bounds      The bounds of the current dialog in dialog coordinates (x,y are 0).
      * @param mouse       The current mouse position relative to the dialogs origin.
      */
-    default void drawForegroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+    public void drawForegroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
     }
 
     /**
@@ -123,14 +164,14 @@ public interface ICompositeWidget {
      * @param button   The pressed button (0=left)
      * @return True to handle the event, false to pass it to other widgets.
      */
-    default boolean onMouseDown(Point mousePos, int button) {
+    public boolean onMouseDown(Point mousePos, int button) {
         return false;
     }
 
     /**
      * Override and return true to capture all mouse up events, even if the mouse is not over the widget.
      */
-    default boolean wantsAllMouseDownEvents() {
+    public boolean wantsAllMouseDownEvents() {
         return false;
     }
 
@@ -141,14 +182,14 @@ public interface ICompositeWidget {
      * @param button   The released button (0=left)
      * @return True to handle the event, false to pass it to other widgets.
      */
-    default boolean onMouseUp(Point mousePos, int button) {
+    public boolean onMouseUp(Point mousePos, int button) {
         return false;
     }
 
     /**
      * Override and return true to capture all mouse up events, even if the mouse is not over the widget.
      */
-    default boolean wantsAllMouseUpEvents() {
+    public boolean wantsAllMouseUpEvents() {
         return false;
     }
 
@@ -159,7 +200,7 @@ public interface ICompositeWidget {
      * @param button   The held button (0=left)
      * @return True to handle the event, false to pass it to other widgets.
      */
-    default boolean onMouseDrag(Point mousePos, int button) {
+    public boolean onMouseDrag(Point mousePos, int button) {
         return false;
     }
 
@@ -170,14 +211,14 @@ public interface ICompositeWidget {
      * @param delta    The mouse wheel movement.
      * @return True to handle the event, false to pass it to other widgets.
      */
-    default boolean onMouseWheel(Point mousePos, double delta) {
+    public boolean onMouseWheel(Point mousePos, double delta) {
         return false;
     }
 
     /**
      * Override and return true to capture all mouse wheel events, even if the mouse is not over the widget.
      */
-    default boolean wantsAllMouseWheelEvents() {
+    public boolean wantsAllMouseWheelEvents() {
         return false;
     }
 
@@ -189,8 +230,34 @@ public interface ICompositeWidget {
      * @return Null if no tooltip is present, the tooltip otherwise.
      */
     @Nullable
-    default Tooltip getTooltip(int mouseX, int mouseY) {
+    public Tooltip getTooltip(int mouseX, int mouseY) {
         return null;
+    }
+
+    /**
+     * Is set by the {@link GuiRoot} when the widget is added, to the style configured for the
+     * widget in the style json.
+     */
+    public void setStyle(WidgetStyle style) {
+    }
+
+    @Nullable
+    public String getId() {
+        return id;
+    }
+
+    public void setId(@Nullable String id) {
+        this.id = id;
+    }
+
+    public boolean isFocused() {
+        return false;
+    }
+
+    public void focus() {
+    }
+
+    public void blur() {
     }
 
 }

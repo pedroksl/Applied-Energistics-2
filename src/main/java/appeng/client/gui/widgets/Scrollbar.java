@@ -19,6 +19,7 @@
 package appeng.client.gui.widgets;
 
 import java.time.Duration;
+import java.util.OptionalInt;
 
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -28,7 +29,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 import appeng.client.Point;
-import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.GuiWidget;
 import appeng.client.gui.style.Blitter;
 import appeng.core.AppEng;
 
@@ -40,7 +41,7 @@ import appeng.core.AppEng;
  * While the width of the track can also be set, the drawn handle will use vanilla's sprite width (see
  * {@link Style#handleWidth()}.
  */
-public class Scrollbar implements IScrollSource, ICompositeWidget {
+public class Scrollbar extends Container implements IScrollSource {
 
     private boolean visible = true;
 
@@ -92,8 +93,8 @@ public class Scrollbar implements IScrollSource, ICompositeWidget {
     }
 
     @Override
-    public Rect2i getBounds() {
-        return new Rect2i(displayX, displayY, style.handleWidth(), height);
+    public OptionalInt getFixedWidth() {
+        return OptionalInt.of(style.handleWidth());
     }
 
     /**
@@ -141,15 +142,11 @@ public class Scrollbar implements IScrollSource, ICompositeWidget {
     }
 
     @Override
-    public void setPosition(Point position) {
-        this.displayX = position.getX();
-        this.displayY = position.getY();
-    }
-
-    @Override
-    public void setSize(int width, int height) {
-        if (height != 0) {
-            this.height = height;
+    public void setBounds(Rect2i bounds) {
+        this.displayX = bounds.getX();
+        this.displayY = bounds.getY();
+        if (bounds.getHeight() != 0) {
+            this.height = bounds.getHeight();
         }
     }
 
@@ -334,14 +331,5 @@ public class Scrollbar implements IScrollSource, ICompositeWidget {
                     Blitter.texture(texture).src(enabledSrcX, enabledSrcY, handleWidth, handleHeight),
                     Blitter.texture(texture).src(disabledSrcX, disabledSrcY, handleWidth, handleHeight));
         }
-    }
-
-    @Override
-    public boolean isVisible() {
-        return visible;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
     }
 }

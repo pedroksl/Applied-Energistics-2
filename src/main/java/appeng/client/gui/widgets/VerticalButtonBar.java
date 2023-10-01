@@ -28,12 +28,12 @@ import net.minecraft.client.renderer.Rect2i;
 
 import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
-import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.GuiWidget;
 
 /**
  * A stacked button panel on the left or right side of our UIs.
  */
-public class VerticalButtonBar implements ICompositeWidget {
+public class VerticalButtonBar extends Container {
 
     // Vertical space between buttons
     private static final int VERTICAL_SPACING = 4;
@@ -45,10 +45,6 @@ public class VerticalButtonBar implements ICompositeWidget {
 
     // The origin of the last initialized screen in window coordinates
     private Point screenOrigin = Point.ZERO;
-    // This bounding rectangle relative to the screens origin
-    private Rect2i bounds = new Rect2i(0, 0, 0, 0);
-
-    private Point position;
 
     public VerticalButtonBar() {
     }
@@ -57,27 +53,12 @@ public class VerticalButtonBar implements ICompositeWidget {
         buttons.add(button);
     }
 
-    @Override
-    public void setPosition(Point position) {
-        this.position = position;
-    }
-
-    @Override
-    public void setSize(int width, int height) {
-        // Setting the size for this control is not supported
-    }
-
-    @Override
-    public Rect2i getBounds() {
-        return bounds;
-    }
-
     /**
      * We need to update every frame because buttons can become visible/invisible at any point in time.
      */
     @Override
     public void updateBeforeRender() {
-        int currentY = position.getY() + MARGIN;
+        int currentY = bounds.getY() + MARGIN;
         int maxWidth = 0;
 
         // Align the button's right edge with the UI and account for margin
@@ -87,7 +68,7 @@ public class VerticalButtonBar implements ICompositeWidget {
             }
 
             // Vanilla widgets need to be in window space
-            button.setX(screenOrigin.getX() + position.getX() - MARGIN - button.getWidth());
+            button.setX(screenOrigin.getX() + bounds.getX() - MARGIN - button.getWidth());
             button.setY(screenOrigin.getY() + currentY);
 
             currentY += button.getHeight() + VERTICAL_SPACING;
@@ -98,8 +79,8 @@ public class VerticalButtonBar implements ICompositeWidget {
         if (maxWidth == 0) {
             bounds = new Rect2i(0, 0, 0, 0);
         } else {
-            int boundX = position.getX() - maxWidth - 2 * MARGIN;
-            int boundY = position.getY();
+            int boundX = bounds.getX() - maxWidth - 2 * MARGIN;
+            int boundY = bounds.getY();
             bounds = new Rect2i(
                     boundX,
                     boundY,

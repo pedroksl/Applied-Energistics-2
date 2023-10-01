@@ -8,7 +8,7 @@ import net.minecraft.world.item.Items;
 
 import appeng.api.config.ActionItems;
 import appeng.client.Point;
-import appeng.client.gui.WidgetContainer;
+import appeng.client.gui.GuiRoot;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.Scrollbar;
@@ -22,7 +22,7 @@ public class ProcessingEncodingPanel extends EncodingModePanel {
     private final ActionButton cycleOutputBtn;
     private final Scrollbar scrollbar;
 
-    public ProcessingEncodingPanel(PatternEncodingTermScreen<?> screen, WidgetContainer widgets) {
+    public ProcessingEncodingPanel(PatternEncodingTermScreen<?> screen, GuiRoot widgets) {
         super(screen, widgets);
 
         // Add buttons for the processing mode

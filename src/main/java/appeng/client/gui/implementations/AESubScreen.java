@@ -20,11 +20,9 @@ package appeng.client.gui.implementations;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.network.chat.Component;
 
-import appeng.client.gui.WidgetContainer;
+import appeng.client.gui.GuiRoot;
 import appeng.client.gui.widgets.TabButton;
 import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.SwitchGuisPacket;
@@ -37,22 +35,22 @@ public final class AESubScreen {
     private AESubScreen() {
     }
 
-    public static void addBackButton(ISubMenu subMenu, String id, WidgetContainer widgets) {
-        addBackButton(subMenu, id, widgets, null);
+    public static TabButton addBackButton(ISubMenu subMenu, String id, GuiRoot widgets) {
+        return addBackButton(subMenu, id, widgets, null);
     }
 
-    public static void addBackButton(ISubMenu subMenu, String id, WidgetContainer widgets,
-            @Nullable Component label) {
+    public static TabButton addBackButton(ISubMenu subMenu, String id, GuiRoot widgets,
+                                          @Nullable Component label) {
         var icon = subMenu.getHost().getMainMenuIcon();
         if (label == null) {
             label = icon.getHoverName();
         }
-        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
         TabButton button = new TabButton(icon, label,
                 btn -> {
                     goBack();
                 });
         widgets.add(id, button);
+        return button;
     }
 
     public static void goBack() {

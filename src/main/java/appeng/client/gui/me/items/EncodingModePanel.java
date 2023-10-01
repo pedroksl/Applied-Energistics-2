@@ -1,23 +1,23 @@
 package appeng.client.gui.me.items;
 
+import appeng.client.gui.GuiRoot;
+import appeng.client.gui.widgets.Container;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
 import appeng.client.Point;
-import appeng.client.gui.ICompositeWidget;
-import appeng.client.gui.WidgetContainer;
+import appeng.client.gui.GuiWidget;
 import appeng.menu.me.items.PatternEncodingTermMenu;
 
-public abstract class EncodingModePanel implements ICompositeWidget {
+import java.util.OptionalInt;
+
+public abstract class EncodingModePanel extends Container {
     protected final PatternEncodingTermScreen<?> screen;
     protected final PatternEncodingTermMenu menu;
-    protected final WidgetContainer widgets;
-    protected boolean visible = false;
-    protected int x;
-    protected int y;
+    protected final GuiRoot widgets;
 
-    public EncodingModePanel(PatternEncodingTermScreen<?> screen, WidgetContainer widgets) {
+    public EncodingModePanel(PatternEncodingTermScreen<?> screen, GuiRoot widgets) {
         this.screen = screen;
         this.menu = screen.getMenu();
         this.widgets = widgets;
@@ -28,26 +28,12 @@ public abstract class EncodingModePanel implements ICompositeWidget {
     abstract Component getTabTooltip();
 
     @Override
-    public void setPosition(Point position) {
-        x = position.getX();
-        y = position.getY();
+    public OptionalInt getFixedWidth() {
+        return OptionalInt.of(126);
     }
 
     @Override
-    public void setSize(int width, int height) {
-    }
-
-    @Override
-    public Rect2i getBounds() {
-        return new Rect2i(x, y, 126, 68);
-    }
-
-    @Override
-    public final boolean isVisible() {
-        return visible;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
+    public OptionalInt getFixedHeight() {
+        return OptionalInt.of(68);
     }
 }

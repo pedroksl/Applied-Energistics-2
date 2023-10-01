@@ -45,7 +45,7 @@ import net.minecraft.network.chat.Component;
 
 import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
-import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.GuiWidget;
 import appeng.client.gui.MathExpressionParser;
 import appeng.client.gui.NumberEntryType;
 import appeng.client.gui.Rects;
@@ -58,7 +58,7 @@ import appeng.core.localization.GuiText;
  * A utility widget that consists of a text-field to enter a number with attached buttons to increment/decrement the
  * number in fixed intervals.
  */
-public class NumberEntryWidget implements ICompositeWidget {
+public class NumberEntryWidget extends Container {
 
     private static final long[] STEPS = new long[] { 1, 10, 100, 1000 };
     private static final Component PLUS = Component.literal("+");
@@ -81,8 +81,6 @@ public class NumberEntryWidget implements ICompositeWidget {
     private Runnable onConfirm;
 
     private boolean hideValidationIcon;
-
-    private Rect2i bounds = new Rect2i(0, 0, 0, 0);
 
     private Rect2i textFieldBounds = Rects.ZERO;
 
@@ -164,21 +162,6 @@ public class NumberEntryWidget implements ICompositeWidget {
     public void setMaxValue(long maxValue) {
         this.maxValue = maxValue;
         validate();
-    }
-
-    @Override
-    public void setPosition(Point position) {
-        bounds = new Rect2i(position.getX(), position.getY(), bounds.getWidth(), bounds.getHeight());
-    }
-
-    @Override
-    public void setSize(int width, int height) {
-        bounds = new Rect2i(bounds.getX(), bounds.getY(), width, height);
-    }
-
-    @Override
-    public Rect2i getBounds() {
-        return bounds;
     }
 
     @Override

@@ -14,7 +14,7 @@ import net.minecraft.world.item.crafting.RecipeType;
 import appeng.api.config.ActionItems;
 import appeng.client.Point;
 import appeng.client.gui.Icon;
-import appeng.client.gui.WidgetContainer;
+import appeng.client.gui.GuiRoot;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.ToggleButton;
@@ -29,7 +29,7 @@ public class SmithingTableEncodingPanel extends EncodingModePanel {
     private final ToggleButton substitutionsBtn;
     private final Slot resultSlot;
 
-    public SmithingTableEncodingPanel(PatternEncodingTermScreen<?> screen, WidgetContainer widgets) {
+    public SmithingTableEncodingPanel(PatternEncodingTermScreen<?> screen, GuiRoot widgets) {
         super(screen, widgets);
 
         clearBtn = new ActionButton(ActionItems.CLOSE, act -> menu.clear());
@@ -52,7 +52,7 @@ public class SmithingTableEncodingPanel extends EncodingModePanel {
         return GuiText.SmithingTablePattern.text();
     }
 
-    private ToggleButton createSubstitutionButton(WidgetContainer widgets) {
+    private ToggleButton createSubstitutionButton(GuiRoot widgets) {
         var button = new ToggleButton(
                 Icon.SUBSTITUTION_ENABLED,
                 Icon.SUBSTITUTION_DISABLED,

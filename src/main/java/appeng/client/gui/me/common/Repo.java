@@ -18,6 +18,23 @@
 
 package appeng.client.gui.me.common;
 
+import appeng.api.config.SortDir;
+import appeng.api.config.SortOrder;
+import appeng.api.config.ViewItems;
+import appeng.api.stacks.AEKey;
+import appeng.client.gui.me.search.RepoSearch;
+import appeng.client.gui.widgets.ISortSource;
+import appeng.core.AELog;
+import appeng.menu.me.common.GridInventoryEntry;
+import appeng.menu.me.common.IClientRepo;
+import appeng.util.prioritylist.IPartitionList;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,28 +44,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-
-import org.jetbrains.annotations.Nullable;
-
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
-
-import appeng.api.config.SortDir;
-import appeng.api.config.SortOrder;
-import appeng.api.config.ViewItems;
-import appeng.api.stacks.AEKey;
-import appeng.client.gui.me.search.RepoSearch;
-import appeng.client.gui.widgets.IScrollSource;
-import appeng.client.gui.widgets.ISortSource;
-import appeng.core.AELog;
-import appeng.menu.me.common.GridInventoryEntry;
-import appeng.menu.me.common.IClientRepo;
-import appeng.util.prioritylist.IPartitionList;
 
 /**
  * For showing the network content of a storage channel, this class will maintain a client-side copy of the current
@@ -67,8 +62,6 @@ public class Repo implements IClientRepo {
         return pinInfo != null ? pinInfo.since : Instant.MAX;
     });
 
-    private int rowSize = 9;
-
     private boolean hasPower;
 
     private final BiMap<Long, GridInventoryEntry> entries = HashBiMap.create();
@@ -76,15 +69,22 @@ public class Repo implements IClientRepo {
     private final ArrayList<GridInventoryEntry> pinnedRow = new ArrayList<>();
     private final RepoSearch search = new RepoSearch();
     private IPartitionList partitionList;
-    private Runnable updateViewListener;
-
-    private final IScrollSource src;
+    private final List<Runnable> updateViewListeners = new ArrayList<>();
     private final ISortSource sortSrc;
     private boolean paused;
 
-    public Repo(IScrollSource src, ISortSource sortSrc) {
-        this.src = src;
+    private int maxPinnedEntries = 9;
+
+    public Repo(ISortSource sortSrc) {
         this.sortSrc = sortSrc;
+    }
+
+    public int getMaxPinnedEntries() {
+        return maxPinnedEntries;
+    }
+
+    public void setMaxPinnedEntries(int maxPinnedEntries) {
+        this.maxPinnedEntries = maxPinnedEntries;
     }
 
     public void setPartitionList(IPartitionList partitionList) {
@@ -174,7 +174,7 @@ public class Repo implements IClientRepo {
             this.pinnedRow.clear();
 
             this.view.ensureCapacity(this.entries.size());
-            this.pinnedRow.ensureCapacity(rowSize);
+            this.pinnedRow.ensureCapacity(maxPinnedEntries);
 
             addEntriesToView(this.entries.values());
         }
@@ -190,8 +190,8 @@ public class Repo implements IClientRepo {
             this.view.sort(getComparator(sortOrder, sortDir));
         }
 
-        if (this.updateViewListener != null) {
-            this.updateViewListener.run();
+        for (var updateViewListener : updateViewListeners) {
+            updateViewListener.run();
         }
     }
 
@@ -203,7 +203,7 @@ public class Repo implements IClientRepo {
 
         for (var entry : entries) {
             // Pinned keys ignore all filters & search
-            if (hasPinnedRow && pinnedRow.size() < rowSize && PinnedKeys.isPinned(entry.getWhat())) {
+            if (hasPinnedRow && pinnedRow.size() < maxPinnedEntries && PinnedKeys.isPinned(entry.getWhat())) {
                 pinnedRow.add(entry);
                 continue;
             }
@@ -290,14 +290,14 @@ public class Repo implements IClientRepo {
     }
 
     private static boolean takeOverSlotOccupiedByRemovedItem(GridInventoryEntry serverEntry,
-            Map<AEKey, IntList> freeSlots, List<GridInventoryEntry> slots) {
+                                                             Map<AEKey, IntList> freeSlots, List<GridInventoryEntry> slots) {
         IntList freeSlotIndices = freeSlots.get(serverEntry.getWhat());
         if (freeSlotIndices == null) {
             return false;
         }
 
         int i = freeSlotIndices.removeInt(freeSlotIndices.size() - 1);
-        if (freeSlotIndices.size() == 0) {
+        if (freeSlotIndices.isEmpty()) {
             freeSlots.remove(serverEntry.getWhat());
         }
 
@@ -313,29 +313,12 @@ public class Repo implements IClientRepo {
         return Comparator.comparing(GridInventoryEntry::getWhat, getKeyComparator(sortOrder, sortDir));
     }
 
-    public List<GridInventoryEntry> getPinnedEntries() {
-        return Collections.unmodifiableList(this.pinnedRow);
+    public List<GridInventoryEntry> getView() {
+        return Collections.unmodifiableList(this.view);
     }
 
-    @Nullable
-    public final GridInventoryEntry get(int idx) {
-        if (!this.pinnedRow.isEmpty()) {
-            // First row of slots is reserved for pinned keys
-            if (idx < this.rowSize) {
-                if (idx < this.pinnedRow.size()) {
-                    return this.pinnedRow.get(idx);
-                }
-                return null;
-            }
-            idx -= this.rowSize;
-        }
-
-        idx += this.src.getCurrentScroll() * this.rowSize;
-
-        if (idx >= this.view.size()) {
-            return null;
-        }
-        return this.view.get(idx);
+    public List<GridInventoryEntry> getPinnedEntries() {
+        return Collections.unmodifiableList(this.pinnedRow);
     }
 
     public final int size() {
@@ -358,14 +341,6 @@ public class Repo implements IClientRepo {
 
     public final void setPower(boolean hasPower) {
         this.hasPower = hasPower;
-    }
-
-    public final int getRowSize() {
-        return this.rowSize;
-    }
-
-    public final void setRowSize(int rowSize) {
-        this.rowSize = rowSize;
     }
 
     public final String getSearchString() {
@@ -399,8 +374,8 @@ public class Repo implements IClientRepo {
         return entries.values();
     }
 
-    public final void setUpdateViewListener(Runnable updateViewListener) {
-        this.updateViewListener = updateViewListener;
+    public final void addUpdateViewListener(Runnable updateViewListener) {
+        this.updateViewListeners.add(updateViewListener);
     }
 
     /**

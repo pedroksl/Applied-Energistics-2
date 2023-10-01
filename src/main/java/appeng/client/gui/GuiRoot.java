@@ -18,15 +18,19 @@
 
 package appeng.client.gui;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
+import appeng.client.Point;
+import appeng.client.gui.style.ScreenStyle;
+import appeng.client.gui.widgets.AECheckbox;
+import appeng.client.gui.widgets.AETextField;
+import appeng.client.gui.widgets.BackgroundPanel;
+import appeng.client.gui.widgets.NumberEntryWidget;
+import appeng.client.gui.widgets.Scrollbar;
+import appeng.client.gui.widgets.TabButton;
+import appeng.core.localization.GuiText;
+import appeng.core.sync.network.NetworkHandler;
+import appeng.core.sync.packets.SwitchGuisPacket;
+import appeng.menu.implementations.PriorityMenu;
 import com.google.common.base.Preconditions;
-
-import org.jetbrains.annotations.Nullable;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -35,21 +39,12 @@ import net.minecraft.client.gui.components.Button.OnPress;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.Nullable;
 
-import appeng.client.Point;
-import appeng.client.gui.style.ScreenStyle;
-import appeng.client.gui.style.WidgetStyle;
-import appeng.client.gui.widgets.AECheckbox;
-import appeng.client.gui.widgets.AETextField;
-import appeng.client.gui.widgets.BackgroundPanel;
-import appeng.client.gui.widgets.IResizableWidget;
-import appeng.client.gui.widgets.NumberEntryWidget;
-import appeng.client.gui.widgets.Scrollbar;
-import appeng.client.gui.widgets.TabButton;
-import appeng.core.localization.GuiText;
-import appeng.core.sync.network.NetworkHandler;
-import appeng.core.sync.packets.SwitchGuisPacket;
-import appeng.menu.implementations.PriorityMenu;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * This utility class helps with positioning commonly used Minecraft {@link AbstractWidget} instances on a screen
@@ -58,51 +53,37 @@ import appeng.menu.implementations.PriorityMenu;
  * This class sources the positioning and sizing for widgets from the {@link ScreenStyle}, and correlates between the
  * screen's JSON file and the widget using a string id.
  */
-public class WidgetContainer {
+public class GuiRoot {
     private final ScreenStyle style;
-    private final Map<String, AbstractWidget> widgets = new LinkedHashMap<>();
-    private final Map<String, ICompositeWidget> compositeWidgets = new LinkedHashMap<>();
+    private final Map<String, GuiWidget> widgets = new LinkedHashMap<>();
     private final Map<String, ResolvedTooltipArea> tooltips = new LinkedHashMap<>();
 
-    public WidgetContainer(ScreenStyle style) {
+    public GuiRoot(ScreenStyle style) {
         this.style = style;
     }
 
-    public void add(String id, AbstractWidget widget) {
-        Preconditions.checkState(!compositeWidgets.containsKey(id), "%s already used for composite widget", id);
-
-        // Size the widget, as this doesn't change when the parent is resized
-        WidgetStyle widgetStyle = style.getWidget(id);
-        int width = widgetStyle.getWidth() != 0 ? widgetStyle.getWidth() : widget.getWidth();
-        int height = widgetStyle.getHeight() != 0 ? widgetStyle.getHeight() : widget.getHeight();
-        if (widget instanceof IResizableWidget resizableWidget) {
-            resizableWidget.resize(width, height);
-        } else {
-            widget.setWidth(width);
-            widget.height = height;
-        }
-
-        if (widget instanceof TabButton tabButton) {
-            if (widgetStyle.isHideEdge()) {
-                tabButton.setStyle(TabButton.Style.CORNER);
-            }
-        }
-
-        if (widgets.put(id, widget) != null) {
-            throw new IllegalStateException("Duplicate id: " + id);
-        }
+    public VanillaWidget add(AbstractWidget vanillaWidget) {
+        return add(null, vanillaWidget);
     }
 
-    public void add(String id, ICompositeWidget widget) {
-        Preconditions.checkState(!widgets.containsKey(id), "%s already used for widget", id);
+    public VanillaWidget add(@Nullable String id, AbstractWidget vanillaWidget) {
+        var widget = new VanillaWidget(vanillaWidget);
+        add(id, widget);
+        return widget;
+    }
 
-        // Size the widget, as this doesn't change when the parent is resized
-        WidgetStyle widgetStyle = style.getWidget(id);
-        widget.setSize(widgetStyle.getWidth(), widgetStyle.getHeight());
+    public void add(GuiWidget widget) {
+        add(null, widget);
+    }
 
-        if (compositeWidgets.put(id, widget) != null) {
-            throw new IllegalStateException("Duplicate id: " + id);
-        }
+    public void add(@Nullable String id, GuiWidget widget) {
+//        // Size the widget, as this doesn't change when the parent is resized
+//        WidgetStyle widgetStyle = style.getWidget(id);
+//        widget.setSize(widgetStyle.getWidth(), widgetStyle.getHeight());
+
+//        widget.setStyle(widgetStyle);
+        widget.setId(id);
+        add(widget);
     }
 
     /**
@@ -160,32 +141,18 @@ public class WidgetContainer {
     }
 
     void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
-        for (var entry : widgets.entrySet()) {
-            var widget = entry.getValue();
-            if (widget.isFocused()) {
-                widget.setFocused(false); // Minecraft already cleared focus on the screen
-            }
-
-            // Position the widget
-            WidgetStyle widgetStyle = style.getWidget(entry.getKey());
-            Point pos = widgetStyle.resolve(bounds);
-            if (widget instanceof IResizableWidget resizableWidget) {
-                resizableWidget.move(pos);
-            } else {
-                widget.setX(pos.getX());
-                widget.setY(pos.getY());
-            }
-
-            addWidget.accept(widget);
-        }
-
         // For composite widgets, just position them. Positions for these widgets are generally relative to the dialog
         Rect2i relativeBounds = new Rect2i(0, 0, bounds.getWidth(), bounds.getHeight());
-        for (var entry : compositeWidgets.entrySet()) {
+        for (var entry : widgets.entrySet()) {
             var widget = entry.getValue();
             var widgetStyle = style.getWidget(entry.getKey());
-            widget.setPosition(widgetStyle.resolve(relativeBounds));
 
+            var newBounds = widgetStyle.resolveBounds(
+                    relativeBounds,
+                    widget.getLayoutBounds().getWidth(),
+                    widget.getLayoutBounds().getHeight()
+            );
+            widget.setBounds(newBounds);
             widget.populateScreen(addWidget, bounds, screen);
         }
 
@@ -202,10 +169,10 @@ public class WidgetContainer {
     }
 
     /**
-     * Tick {@link ICompositeWidget} instances that are not automatically ticked as part of being a normal widget.
+     * Tick {@link GuiWidget} instances that are not automatically ticked as part of being a normal widget.
      */
     public void tick() {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()) {
                 widget.tick();
             }
@@ -213,10 +180,10 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#updateBeforeRender()
+     * @see GuiWidget#updateBeforeRender()
      */
     public void updateBeforeRender() {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()) {
                 widget.updateBeforeRender();
             }
@@ -224,10 +191,10 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#drawBackgroundLayer(GuiGraphics, Rect2i, Point)
+     * @see GuiWidget#drawBackgroundLayer(GuiGraphics, Rect2i, Point)
      */
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()) {
                 widget.drawBackgroundLayer(guiGraphics, bounds, mouse);
             }
@@ -235,10 +202,10 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#drawForegroundLayer(GuiGraphics, Rect2i, Point)
+     * @see GuiWidget#drawForegroundLayer(GuiGraphics, Rect2i, Point)
      */
     public void drawForegroundLayer(GuiGraphics poseStack, Rect2i bounds, Point mouse) {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()) {
                 widget.drawForegroundLayer(poseStack, bounds, mouse);
             }
@@ -246,12 +213,12 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#onMouseDown(Point, int)
+     * @see GuiWidget#onMouseDown(Point, int)
      */
     public boolean onMouseDown(Point mousePos, int btn) {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()
-                    && (widget.wantsAllMouseDownEvents() || mousePos.isIn(widget.getBounds()))
+                    && (widget.wantsAllMouseDownEvents() || mousePos.isIn(widget.getLayoutBounds()))
                     && widget.onMouseDown(mousePos, btn)) {
                 return true;
             }
@@ -261,12 +228,12 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#onMouseUp(Point, int)
+     * @see GuiWidget#onMouseUp(Point, int)
      */
     public boolean onMouseUp(Point mousePos, int btn) {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()
-                    && (widget.wantsAllMouseUpEvents() || mousePos.isIn(widget.getBounds()))
+                    && (widget.wantsAllMouseUpEvents() || mousePos.isIn(widget.getLayoutBounds()))
                     && widget.onMouseUp(mousePos, btn)) {
                 return true;
             }
@@ -276,10 +243,10 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#onMouseDrag(Point, int)
+     * @see GuiWidget#onMouseDrag(Point, int)
      */
     public boolean onMouseDrag(Point mousePos, int btn) {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible() && widget.onMouseDrag(mousePos, btn)) {
                 return true;
             }
@@ -289,20 +256,20 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#onMouseWheel(Point, double)
+     * @see GuiWidget#onMouseWheel(Point, double)
      */
     boolean onMouseWheel(Point mousePos, double wheelDelta) {
         // First pass: dispatch wheel event to widgets the mouse is over
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()
-                    && mousePos.isIn(widget.getBounds())
+                    && mousePos.isIn(widget.getLayoutBounds())
                     && widget.onMouseWheel(mousePos, wheelDelta)) {
                 return true;
             }
         }
 
         // Second pass: send the event to capturing widgets
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()
                     && widget.wantsAllMouseWheelEvents()
                     && widget.onMouseWheel(mousePos, wheelDelta)) {
@@ -314,10 +281,10 @@ public class WidgetContainer {
     }
 
     /**
-     * @see ICompositeWidget#addExclusionZones(List, Rect2i)
+     * @see GuiWidget#addExclusionZones(List, Rect2i)
      */
     public void addExclusionZones(List<Rect2i> exclusionZones, Rect2i bounds) {
-        for (var widget : compositeWidgets.values()) {
+        for (var widget : widgets.values()) {
             if (widget.isVisible()) {
                 widget.addExclusionZones(exclusionZones, bounds);
             }
@@ -348,12 +315,12 @@ public class WidgetContainer {
 
     @Nullable
     public Tooltip getTooltip(int mouseX, int mouseY) {
-        for (var c : this.compositeWidgets.values()) {
+        for (var c : this.widgets.values()) {
             if (!c.isVisible()) {
                 continue;
             }
 
-            Rect2i bounds = c.getBounds();
+            Rect2i bounds = c.getLayoutBounds();
             if (mouseX >= bounds.getX() && mouseX < bounds.getX() + bounds.getWidth()
                     && mouseY >= bounds.getY() && mouseY < bounds.getY() + bounds.getHeight()) {
                 Tooltip tooltip = c.getTooltip(mouseX, mouseY);
@@ -376,8 +343,8 @@ public class WidgetContainer {
      * Check if there's any content or compound widget at the given screen-relative mouse position.
      */
     public boolean hitTest(Point mousePos) {
-        for (var widget : compositeWidgets.values()) {
-            if (mousePos.isIn(widget.getBounds())) {
+        for (var widget : widgets.values()) {
+            if (mousePos.isIn(widget.getLayoutBounds())) {
                 return true;
             }
         }

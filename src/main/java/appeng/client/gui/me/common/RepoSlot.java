@@ -43,7 +43,7 @@ public class RepoSlot extends ClientReadOnlySlot {
 
     public GridInventoryEntry getEntry() {
         if (this.repo.hasPower()) {
-            return this.repo.get(this.offset);
+            return null;
         }
         return null;
     }

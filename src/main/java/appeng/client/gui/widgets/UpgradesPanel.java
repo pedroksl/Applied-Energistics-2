@@ -20,6 +20,7 @@ package appeng.client.gui.widgets;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -35,7 +36,6 @@ import appeng.api.upgrades.IUpgradeableObject;
 import appeng.api.upgrades.Upgrades;
 import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
-import appeng.client.gui.ICompositeWidget;
 import appeng.client.gui.Rects;
 import appeng.client.gui.Tooltip;
 import appeng.client.gui.style.Blitter;
@@ -44,7 +44,7 @@ import appeng.menu.slot.AppEngSlot;
 /**
  * A panel that can draw a dynamic number of upgrade slots in a vertical layout.
  */
-public final class UpgradesPanel implements ICompositeWidget {
+public final class UpgradesPanel extends Container {
 
     private static final int SLOT_SIZE = 18;
     private static final int PADDING = 7;
@@ -57,10 +57,6 @@ public final class UpgradesPanel implements ICompositeWidget {
 
     // The screen origin in window space (used to layout slots)
     private Point screenOrigin = Point.ZERO;
-
-    // Relative to current screen origin (not window)
-    private int x;
-    private int y;
 
     private final Supplier<List<Component>> tooltipSupplier;
 
@@ -78,29 +74,15 @@ public final class UpgradesPanel implements ICompositeWidget {
     }
 
     @Override
-    public void setPosition(Point position) {
-        x = position.getX();
-        y = position.getY();
-    }
-
-    /**
-     * Changes where the panel is positioned. Coordinates are relative to the current screen's origin.
-     */
-    @Override
-    public void setSize(int width, int height) {
-        // Size of upgrades panel cannot be set via JSON
-    }
-
-    /**
-     * The overall bounding box in screen coordinates.
-     */
-    @Override
-    public Rect2i getBounds() {
+    public OptionalInt getFixedWidth() {
         int slotCount = getUpgradeSlotCount();
+        return OptionalInt.of(2 * PADDING + (slotCount + MAX_ROWS - 1) / MAX_ROWS * SLOT_SIZE);
+    }
 
-        int height = 2 * PADDING + Math.min(MAX_ROWS, slotCount) * SLOT_SIZE;
-        int width = 2 * PADDING + (slotCount + MAX_ROWS - 1) / MAX_ROWS * SLOT_SIZE;
-        return new Rect2i(x, y, width, height);
+    @Override
+    public OptionalInt getFixedHeight() {
+        int slotCount = getUpgradeSlotCount();
+        return OptionalInt.of(2 * PADDING + Math.min(MAX_ROWS, slotCount) * SLOT_SIZE);
     }
 
     @Override
@@ -110,8 +92,8 @@ public final class UpgradesPanel implements ICompositeWidget {
 
     @Override
     public void updateBeforeRender() {
-        int slotOriginX = this.x + PADDING;
-        int slotOriginY = this.y + PADDING;
+        int slotOriginX = this.getLayoutBounds().getX() + PADDING;
+        int slotOriginY = this.getLayoutBounds().getY() + PADDING;
 
         for (Slot slot : slots) {
             if (!slot.isActive()) {
@@ -132,8 +114,8 @@ public final class UpgradesPanel implements ICompositeWidget {
         }
 
         // This is the absolute x,y coord of the first slot within the panel
-        int slotOriginX = screenOrigin.getX() + this.x + PADDING;
-        int slotOriginY = screenOrigin.getY() + this.y + PADDING;
+        int slotOriginX = screenOrigin.getX() + this.getLayoutBounds().getX() + PADDING;
+        int slotOriginY = screenOrigin.getY() + this.getLayoutBounds().getY() + PADDING;
 
         for (int i = 0; i < slotCount; i++) {
             // Unlike other UIs, this is drawn top-to-bottom,left-to-right
@@ -172,12 +154,12 @@ public final class UpgradesPanel implements ICompositeWidget {
 
         // Add a single bounding rectangle for as many columns as are fully populated
         int fullCols = slotCount / MAX_ROWS;
-        int rightEdge = offsetX + x;
+        int rightEdge = offsetX + this.getLayoutBounds().getX();
         if (fullCols > 0) {
             int fullColWidth = PADDING * 2 + fullCols * SLOT_SIZE;
             exclusionZones.add(Rects.expand(new Rect2i(
                     rightEdge,
-                    offsetY + y,
+                    offsetY + this.getLayoutBounds().getY(),
                     fullColWidth,
                     PADDING * 2 + MAX_ROWS * SLOT_SIZE), margin));
             rightEdge += fullColWidth;
@@ -188,7 +170,7 @@ public final class UpgradesPanel implements ICompositeWidget {
         if (remaining > 0) {
             exclusionZones.add(Rects.expand(new Rect2i(
                     rightEdge,
-                    offsetY + y,
+                    offsetY + this.getLayoutBounds().getY(),
                     // We need to add padding in case there's no full column that already includes it
                     SLOT_SIZE + (fullCols > 0 ? 0 : PADDING * 2),
                     PADDING * 2 + remaining * SLOT_SIZE), margin));

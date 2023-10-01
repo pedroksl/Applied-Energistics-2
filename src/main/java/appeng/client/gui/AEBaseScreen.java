@@ -18,44 +18,6 @@
 
 package appeng.client.gui;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import com.google.common.base.Stopwatch;
-import com.mojang.blaze3d.platform.InputConstants;
-
-import org.jetbrains.annotations.MustBeInvokedByOverriders;
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.ComponentRenderUtils;
-import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-
 import appeng.api.behaviors.ContainerItemStrategies;
 import appeng.api.behaviors.EmptyingAction;
 import appeng.api.implementations.menuobjects.ItemMenuHost;
@@ -71,6 +33,7 @@ import appeng.client.gui.style.TextAlignment;
 import appeng.client.gui.widgets.ITickingWidget;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.OpenGuideButton;
+import appeng.client.gui.widgets.PlayerInventoryPanel;
 import appeng.client.gui.widgets.VerticalButtonBar;
 import appeng.client.guidebook.PageAnchor;
 import appeng.client.guidebook.indices.ItemIndex;
@@ -94,6 +57,41 @@ import appeng.menu.slot.FakeSlot;
 import appeng.menu.slot.IOptionalSlot;
 import appeng.menu.slot.ResizableSlot;
 import appeng.util.ConfigMenuInventory;
+import com.google.common.base.Stopwatch;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.ComponentRenderUtils;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import org.jetbrains.annotations.MustBeInvokedByOverriders;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContainerScreen<T> {
     private static final Logger LOG = LoggerFactory.getLogger(AEBaseScreen.class);
@@ -110,6 +108,8 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
 
     // drag y
     private final Set<Slot> drag_click = new HashSet<>();
+    @Nullable
+    private final PlayerInventoryPanel playerInventoryPanel;
     private boolean disableShiftClick = false;
     private Stopwatch dbl_clickTimer = Stopwatch.createStarted();
     private ItemStack dbl_whichItem = ItemStack.EMPTY;
@@ -117,7 +117,7 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
     private boolean handlingRightClick;
     private final Map<String, TextOverride> textOverrides = new HashMap<>();
     private final Set<SlotSemantic> hiddenSlots = new HashSet<>();
-    protected final WidgetContainer widgets;
+    protected final GuiRoot widgets;
     protected final ScreenStyle style;
     protected final AEConfig config = AEConfig.instance();
 
@@ -134,7 +134,7 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
         this.font = Minecraft.getInstance().font;
 
         this.style = Objects.requireNonNull(style, "style");
-        this.widgets = new WidgetContainer(style);
+        this.widgets = new GuiRoot(style);
         this.widgets.add("verticalToolbar", this.verticalToolbar = new VerticalButtonBar());
 
         // Add a help-button to the vertical button bar
@@ -146,6 +146,15 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
         } else if (style.getBackground() != null) {
             this.imageWidth = style.getBackground().getSrcWidth();
             this.imageHeight = style.getBackground().getSrcHeight();
+        }
+
+        // If the menu has hotbar or player inventory slots, add the player inventory panel
+        if (!menu.getSlots(SlotSemantics.PLAYER_INVENTORY).isEmpty()
+                || !menu.getSlots(SlotSemantics.PLAYER_HOTBAR).isEmpty()) {
+            playerInventoryPanel = new PlayerInventoryPanel(menu);
+            this.widgets.add("playerInventory", playerInventoryPanel);
+        } else {
+            playerInventoryPanel = null;
         }
     }
 
@@ -470,7 +479,7 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
 
     @Override
     protected final void renderBg(GuiGraphics guiGraphics, float f, int x,
-            int y) {
+                                  int y) {
 
         this.drawBG(guiGraphics, leftPos, topPos, x, y, f);
 
@@ -745,7 +754,7 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
     }
 
     public void drawBG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX, int mouseY,
-            float partialTicks) {
+                       float partialTicks) {
 
         var generatedBackground = style.getGeneratedBackground();
         if (generatedBackground != null) {

@@ -18,11 +18,9 @@
 
 package appeng.client.gui.style;
 
-import org.jetbrains.annotations.Nullable;
-
-import net.minecraft.client.renderer.Rect2i;
-
 import appeng.client.Point;
+import net.minecraft.client.renderer.Rect2i;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Describes positioning for a slot.
@@ -95,6 +93,43 @@ public class Position {
         }
 
         return new Point(x, y).move(bounds.getX(), bounds.getY());
+    }
+
+    /**
+     * Resolves this relative position against the given bounds, and makes it absolute.
+     */
+    public Rect2i resolveBounds(Rect2i bounds, int currentWidth, int currentHeight) {
+        // Start by computing the x,y position
+        int x, y;
+        var width = currentWidth;
+        var height = currentHeight;
+        if (left != null) {
+            x = left;
+            if (right != null) {
+                width = Math.max(0, (bounds.getWidth() - right) - left);
+            }
+        } else if (right != null) {
+            x = bounds.getWidth() - right;
+        } else {
+            x = 0;
+        }
+        if (top != null) {
+            y = top;
+            if (bottom != null) {
+                height = Math.max(0, (bounds.getHeight() - bottom) - top);
+            }
+        } else if (bottom != null) {
+            y = bounds.getHeight() - bottom;
+        } else {
+            y = 0;
+        }
+
+        return new Rect2i(
+                bounds.getX() + x,
+                bounds.getY() + y,
+                width,
+                height
+        );
     }
 
     @Override

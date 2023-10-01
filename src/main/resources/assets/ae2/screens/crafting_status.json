@@ -8,8 +8,7 @@
     },
     "back": {
       "left": 213,
-      "top": -4,
-      "hideEdge": true
+      "top": -4
     },
     "selectCpuList": {
       "$comment": "List of available crafting CPU and their status",

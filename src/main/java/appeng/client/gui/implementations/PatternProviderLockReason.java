@@ -1,5 +1,6 @@
 package appeng.client.gui.implementations;
 
+import appeng.client.gui.widgets.Container;
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.ChatFormatting;
@@ -12,17 +13,14 @@ import appeng.api.client.AEKeyRendering;
 import appeng.api.config.LockCraftingMode;
 import appeng.api.stacks.AmountFormat;
 import appeng.client.Point;
-import appeng.client.gui.ICompositeWidget;
 import appeng.client.gui.Icon;
 import appeng.client.gui.Tooltip;
 import appeng.core.localization.GuiText;
 import appeng.core.localization.InGameTooltip;
 
-public class PatternProviderLockReason implements ICompositeWidget {
-    protected boolean visible = false;
-    protected int x;
-    protected int y;
+import java.util.OptionalInt;
 
+public class PatternProviderLockReason extends Container {
     private final PatternProviderScreen<?> screen;
 
     public PatternProviderLockReason(PatternProviderScreen<?> screen) {
@@ -30,27 +28,13 @@ public class PatternProviderLockReason implements ICompositeWidget {
     }
 
     @Override
-    public void setPosition(Point position) {
-        x = position.getX();
-        y = position.getY();
+    public OptionalInt getFixedWidth() {
+        return OptionalInt.of(126);
     }
 
     @Override
-    public void setSize(int width, int height) {
-    }
-
-    @Override
-    public Rect2i getBounds() {
-        return new Rect2i(x, y, 126, 16);
-    }
-
-    @Override
-    public final boolean isVisible() {
-        return visible;
-    }
-
-    public void setVisible(boolean visible) {
-        this.visible = visible;
+    public OptionalInt getFixedHeight() {
+        return OptionalInt.of(16);
     }
 
     @Override
@@ -69,8 +53,8 @@ public class PatternProviderLockReason implements ICompositeWidget {
                     .withStyle(ChatFormatting.DARK_RED);
         }
 
-        icon.getBlitter().dest(x, y).blit(guiGraphics);
-        guiGraphics.drawString(Minecraft.getInstance().font, lockStatusText, x + 15, y + 5, -1, false);
+        icon.getBlitter().dest(getLayoutBounds().getX(), getLayoutBounds().getY()).blit(guiGraphics);
+        guiGraphics.drawString(Minecraft.getInstance().font, lockStatusText, getLayoutBounds().getX() + 15, getLayoutBounds().getY() + 5, -1, false);
     }
 
     @Nullable
