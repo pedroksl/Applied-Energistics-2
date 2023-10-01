@@ -65,46 +65,6 @@ public class TerminalStyle {
      */
     private boolean showTooltipsWithItemInHand;
 
-    public Blitter getHeader() {
-        return header;
-    }
-
-    public void setHeader(Blitter header) {
-        this.header = header;
-    }
-
-    public Blitter getFirstRow() {
-        return firstRow;
-    }
-
-    public void setFirstRow(Blitter firstRow) {
-        this.firstRow = firstRow;
-    }
-
-    public Blitter getRow() {
-        return row;
-    }
-
-    public void setRow(Blitter row) {
-        this.row = row;
-    }
-
-    public Blitter getLastRow() {
-        return lastRow;
-    }
-
-    public void setLastRow(Blitter lastRow) {
-        this.lastRow = lastRow;
-    }
-
-    public Blitter getBottom() {
-        return bottom;
-    }
-
-    public void setBottom(Blitter bottom) {
-        this.bottom = bottom;
-    }
-
     public int getSlotsPerRow() {
         return slotsPerRow;
     }

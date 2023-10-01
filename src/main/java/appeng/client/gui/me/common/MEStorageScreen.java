@@ -18,25 +18,6 @@
 
 package appeng.client.gui.me.common;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-
-import com.mojang.blaze3d.platform.InputConstants;
-
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
-
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
-
 import appeng.api.behaviors.ContainerItemStrategies;
 import appeng.api.client.AEKeyRendering;
 import appeng.api.config.ActionItems;
@@ -52,7 +33,6 @@ import appeng.api.stacks.AmountFormat;
 import appeng.api.storage.AEKeyFilter;
 import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
-import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
@@ -62,7 +42,8 @@ import appeng.client.gui.style.TerminalStyle;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.ISortSource;
-import appeng.client.gui.widgets.Scrollbar;
+import appeng.client.gui.widgets.PanelBlitter;
+import appeng.client.gui.widgets.RepoPanel;
 import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
 import appeng.client.gui.widgets.ToolboxPanel;
@@ -86,6 +67,22 @@ import appeng.util.ExternalSearch;
 import appeng.util.IConfigManagerListener;
 import appeng.util.Platform;
 import appeng.util.prioritylist.IPartitionList;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 public class MEStorageScreen<C extends MEStorageMenu>
         extends AEBaseScreen<C> implements ISortSource, IConfigManagerListener {
@@ -103,16 +100,21 @@ public class MEStorageScreen<C extends MEStorageMenu>
     private TabButton craftingStatusBtn;
     private final AETextField searchField;
     private int rows = 0;
+    private int cols = 4;
+    private static final int SLOT_SIZE = 18;
     private SettingToggleButton<ViewItems> viewModeToggle;
     private SettingToggleButton<TypeFilter> filterTypesToggle;
     private SettingToggleButton<SortOrder> sortByToggle;
     private final SettingToggleButton<SortDir> sortDirToggle;
     private int currentMouseX = 0;
     private int currentMouseY = 0;
-    private final Scrollbar scrollbar;
+
+    private final RepoPanel repoPanel;
+
+    private boolean resizing;
 
     public MEStorageScreen(C menu, Inventory playerInventory,
-            Component title, ScreenStyle style) {
+                           Component title, ScreenStyle style) {
         super(menu, playerInventory, title, style);
 
         this.style = style.getTerminalStyle();
@@ -124,11 +126,10 @@ public class MEStorageScreen<C extends MEStorageMenu>
         this.searchField = widgets.addTextField("search");
         this.searchField.setPlaceholder(GuiText.SearchPlaceholder.text());
 
-        this.scrollbar = widgets.addScrollBar("scrollbar");
-        this.repo = new Repo(scrollbar, this);
+        this.repo = new Repo(this);
+        this.repoPanel = new RepoPanel(this.repo);
         menu.setClientRepo(this.repo);
-        this.repo.setUpdateViewListener(this::updateScrollbar);
-        updateScrollbar();
+        this.widgets.add("repoPanel", repoPanel);
 
         this.searchField.setResponder(this::setSearchText);
 
@@ -209,8 +210,8 @@ public class MEStorageScreen<C extends MEStorageMenu>
     }
 
     protected void handleGridInventoryEntryMouseClick(@Nullable GridInventoryEntry entry,
-            int mouseButton,
-            ClickType clickType) {
+                                                      int mouseButton,
+                                                      ClickType clickType) {
         if (entry != null) {
             AELog.debug("Clicked on grid inventory entry serial=%s, key=%s", entry.getSerial(), entry.getWhat());
         }
@@ -288,15 +289,6 @@ public class MEStorageScreen<C extends MEStorageMenu>
         return entry.getStoredAmount() == 0 && entry.isCraftable();
     }
 
-    private void updateScrollbar() {
-        scrollbar.setHeight(this.rows * style.getRow().getSrcHeight() - 2);
-        int totalRows = (this.repo.size() + getSlotsPerRow() - 1) / getSlotsPerRow();
-        if (repo.hasPinnedRow()) {
-            totalRows++;
-        }
-        scrollbar.setRange(0, totalRows - this.rows, Math.max(1, this.rows / 6));
-    }
-
     private void showCraftingStatus() {
         NetworkHandler.instance().sendToServer(SwitchGuisPacket.openSubMenu(CraftingStatusMenu.TYPE));
     }
@@ -308,31 +300,29 @@ public class MEStorageScreen<C extends MEStorageMenu>
     @Override
     public void init() {
         var availableHeight = height - 2 * AEConfig.instance().getTerminalMargin();
-        this.rows = Math.max(MIN_ROWS, config.getTerminalStyle().getRows(style.getPossibleRows(availableHeight)));
+//        this.rows = Math.max(MIN_ROWS, config.getTerminalStyle().getRows(style.getPossibleRows(availableHeight)));
 
         // Size the menu according to the number of rows we decided to have
-        this.imageHeight = style.getScreenHeight(rows);
+//        this.imageHeight = style.getScreenHeight(rows);
 
         // Re-create the ME slots since the number of rows could have changed
-        List<Slot> slots = this.menu.slots;
-        slots.removeIf(slot -> slot instanceof RepoSlot);
-
-        int repoIndex = 0;
-        for (int row = 0; row < this.rows; row++) {
-            for (int col = 0; col < style.getSlotsPerRow(); col++) {
-                Point pos = style.getSlotPos(row, col);
-
-                slots.add(new RepoSlot(this.repo, repoIndex++, pos.getX(), pos.getY()));
-            }
-        }
+// TODO        List<Slot> slots = this.menu.slots;
+// TODO        slots.removeIf(slot -> slot instanceof RepoSlot);
+// TODO
+// TODO        int repoIndex = 0;
+// TODO        for (int row = 0; row < this.rows; row++) {
+// TODO            for (int col = 0; col < style.getSlotsPerRow(); col++) {
+// TODO                Point pos = style.getSlotPos(row, col);
+// TODO
+// TODO                slots.add(new RepoSlot(this.repo, repoIndex++, pos.getX(), pos.getY()));
+// TODO            }
+// TODO        }
 
         super.init();
 
         if (shouldAutoFocus()) {
             setInitialFocus(this.searchField);
         }
-
-        this.updateScrollbar();
     }
 
     @Override
@@ -405,7 +395,7 @@ public class MEStorageScreen<C extends MEStorageMenu>
 
     @Override
     public void drawFG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX,
-            int mouseY) {
+                       int mouseY) {
         this.currentMouseX = mouseX;
         this.currentMouseY = mouseY;
 
@@ -424,6 +414,10 @@ public class MEStorageScreen<C extends MEStorageMenu>
             StackSizeRenderer.renderSizeLabel(guiGraphics, font, x - this.leftPos, y - this.topPos,
                     String.valueOf(menu.activeCraftingJobs));
         }
+
+        var pb = new PanelBlitter();
+        pb.addBounds(imageWidth - 5, imageHeight - 5, 5, 5);
+        pb.blit(guiGraphics, 0, 0);
     }
 
     private void renderPinnedRowDecorations(GuiGraphics guiGraphics) {
@@ -436,7 +430,7 @@ public class MEStorageScreen<C extends MEStorageMenu>
 
                     Blitter.texture("block/molecular_assembler_lights.png", 16, 192)
                             .src(2, 2 + frame * 16, 12, 12)
-                            .dest(slot.x - 1, slot.y - 1, 18, 18)
+                            .dest(slot.x - 1, slot.y - 1, SLOT_SIZE, SLOT_SIZE)
                             .blit(guiGraphics);
                 }
             }
@@ -461,7 +455,19 @@ public class MEStorageScreen<C extends MEStorageMenu>
             }
         }
 
+        if (btn == 0 && xCoord >= leftPos + imageWidth - 5 && yCoord >= topPos + imageHeight - 5 && xCoord < leftPos + imageWidth && yCoord < topPos + imageHeight) {
+            resizing = true;
+        }
+
         return super.mouseClicked(xCoord, yCoord, btn);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            resizing = false;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
@@ -512,36 +518,46 @@ public class MEStorageScreen<C extends MEStorageMenu>
 
     @Override
     public void drawBG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX,
-            int mouseY, float partialTicks) {
+                       int mouseY, float partialTicks) {
 
-        style.getHeader()
-                .dest(offsetX, offsetY)
-                .blit(guiGraphics);
+        var pb = new PanelBlitter();
+        pb.addBounds(0, 0, imageWidth, imageHeight - 90);
+        pb.addBounds(0, imageHeight - 90, 200, 90);
 
-        int y = offsetY;
-        style.getHeader().dest(offsetX, y).blit(guiGraphics);
-        y += style.getHeader().getSrcHeight();
+        pb.blit(guiGraphics, offsetX, offsetY);
+//
+//        var slotGridOrigin = style.getSlotPos(0, 0);
+//        var slotGridWidth = slotGridOrigin.getX() + cols * SLOT_SIZE;
+//        var slotGridHeight = slotGridOrigin.getY() + 2 * SLOT_SIZE;
+//
+//        var f = (System.currentTimeMillis() % 5000) / 5000f;
+//        if (f < 0.25f) {
+//            f *= 4;
+//            pb.addBounds((int) (-slotGridWidth + (slotGridWidth + imageWidth) * f), 0, slotGridWidth, slotGridHeight);
+//        } else if (f < 0.5f) {
+//            f = (f - 0.25f) * 4;
+//            pb.addBounds(imageWidth, (int) (imageHeight * f), slotGridWidth, slotGridHeight);
+//        } else if (f < 0.75f) {
+//            f = (f - 0.5f) * 4;
+//            pb.addBounds((int) (-slotGridWidth + (slotGridWidth + imageWidth) * (1 - f)), imageHeight, slotGridWidth,
+//                    slotGridHeight);
+//        } else {
+//            f = (f - 0.75f) * 4;
+//            pb.addBounds(-slotGridWidth, (int) (imageHeight * (1 - f)), slotGridWidth, slotGridHeight);
+//        }
 
-        // To draw the first/last row, we need to at least draw 2
-        int rowsToDraw = Math.max(2, this.rows);
-        for (int x = 0; x < rowsToDraw; x++) {
-            Blitter row = style.getRow();
-            if (x == 0) {
-                row = style.getFirstRow();
-            } else if (x + 1 == rowsToDraw) {
-                row = style.getLastRow();
-            }
-            row.dest(offsetX, y).blit(guiGraphics);
-            y += style.getRow().getSrcHeight();
-        }
+//        pb.addBounds(imageWidth - 25, 0, 25, 100);
 
-        style.getBottom().dest(offsetX, y).blit(guiGraphics);
+        // Player inventory
+//        pb.addBounds(0, slotGridHeight, imageWidth, imageHeight - slotGridHeight);
+//
+//        pb.blit(guiGraphics, offsetX, offsetY);
 
         // Draw the overlay for the pinned row
         if (repo.hasPinnedRow()) {
             Blitter.texture("guis/terminal.png")
-                    .src(0, 204, 162, 18)
-                    .dest(offsetX + 7, offsetY + style.getHeader().getSrcHeight())
+                    .src(0, 204, 162, SLOT_SIZE)
+                    .dest(offsetX + 7, offsetY + SLOT_SIZE)
                     .blit(guiGraphics);
         }
 
@@ -770,7 +786,6 @@ public class MEStorageScreen<C extends MEStorageMenu>
     private void setSearchText(String text) {
         repo.setSearchString(text);
         repo.updateView();
-        updateScrollbar();
     }
 
     private void reinitalize() {
@@ -786,5 +801,16 @@ public class MEStorageScreen<C extends MEStorageMenu>
      */
     public void storeState() {
         rememberedSearch = this.searchField.getValue();
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int mouseButton, double dragX, double dragY) {
+        if (resizing) {
+            imageWidth += (int) dragX * 2;
+            imageHeight += (int) dragY * 2;
+            repositionElements();
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, mouseButton, dragX, dragY);
     }
 }
