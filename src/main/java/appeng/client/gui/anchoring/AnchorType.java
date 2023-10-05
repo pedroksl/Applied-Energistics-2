@@ -13,5 +13,9 @@ public enum AnchorType {
     AnchorType(AnchorAxis axis) {
         this.axis = axis;
     }
+
+    public AnchorAxis getAxis() {
+        return axis;
+    }
 }
 

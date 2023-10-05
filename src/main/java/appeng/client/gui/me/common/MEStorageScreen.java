@@ -36,13 +36,19 @@ import appeng.api.util.IConfigurableObject;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.AESubScreen;
 import appeng.client.gui.Icon;
+import appeng.client.gui.anchoring.AnchorLine;
+import appeng.client.gui.anchoring.AnchorLineTarget;
+import appeng.client.gui.anchoring.AnchorType;
 import appeng.client.gui.style.Blitter;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.TerminalStyle;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.ActionButton;
+import appeng.client.gui.widgets.BackgroundPanel;
+import appeng.client.gui.widgets.Container;
 import appeng.client.gui.widgets.ISortSource;
 import appeng.client.gui.widgets.PanelBlitter;
+import appeng.client.gui.widgets.PlayerInventoryPanel;
 import appeng.client.gui.widgets.RepoPanel;
 import appeng.client.gui.widgets.SettingToggleButton;
 import appeng.client.gui.widgets.TabButton;
@@ -123,13 +129,25 @@ public class MEStorageScreen<C extends MEStorageMenu>
                     "Cannot construct screen " + getClass() + " without a terminalStyles setting");
         }
 
+        var mainContainer = getMainContainer();
+        mainContainer.setSize(300, 150);
+
+        var repoPanel = new Container();
+        repoPanel.addChild(new BackgroundPanel())
+                .getAnchors().fillParent();
+        repoPanel.getAnchors().setTop(AnchorLine.parentTop());
+        repoPanel.getAnchors().setTop(AnchorLine.parentLeft());
+        repoPanel.getAnchors().setRight(AnchorLine.parentRight());
+        repoPanel.getAnchors().setBottom(new AnchorLine(AnchorLineTarget.siblingId("playerInventory"), AnchorType.TOP));
+        mainContainer.addChild(repoPanel);
+
         this.searchField = widgets.addTextField("search");
         this.searchField.setPlaceholder(GuiText.SearchPlaceholder.text());
 
         this.repo = new Repo(this);
         this.repoPanel = new RepoPanel(this.repo);
         menu.setClientRepo(this.repo);
-        this.widgets.add("repoPanel", repoPanel);
+//        this.widgets.add("repoPanel", repoPanel);
 
         this.searchField.setResponder(this::setSearchText);
 
@@ -519,13 +537,7 @@ public class MEStorageScreen<C extends MEStorageMenu>
     @Override
     public void drawBG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX,
                        int mouseY, float partialTicks) {
-
-        var pb = new PanelBlitter();
-        pb.addBounds(0, 0, imageWidth, imageHeight - 90);
-        pb.addBounds(0, imageHeight - 90, 200, 90);
-
-        pb.blit(guiGraphics, offsetX, offsetY);
-//
+        //
 //        var slotGridOrigin = style.getSlotPos(0, 0);
 //        var slotGridWidth = slotGridOrigin.getX() + cols * SLOT_SIZE;
 //        var slotGridHeight = slotGridOrigin.getY() + 2 * SLOT_SIZE;

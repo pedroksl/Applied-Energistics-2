@@ -50,10 +50,10 @@ public class ToolboxPanel extends Container {
     @Override
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
         background.dest(
-                bounds.getX() + this.bounds.getX(),
-                bounds.getY() + this.bounds.getY(),
-                this.bounds.getWidth(),
-                this.bounds.getHeight()).blit(guiGraphics);
+                bounds.getX() + this.getLayoutBounds().getX(),
+                bounds.getY() + this.getLayoutBounds().getY(),
+                this.getLayoutBounds().getWidth(),
+                this.getLayoutBounds().getHeight()).blit(guiGraphics);
     }
 
     @Nullable

@@ -3,43 +3,21 @@ package appeng.client.gui.widgets;
 import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.GuiWidget;
+import appeng.client.gui.layout.LayoutElement;
 import appeng.client.gui.style.WidgetStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.renderer.Rect2i;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class Container extends GuiWidget {
     protected final List<GuiWidget> children = new ArrayList<>();
 
-    protected Rect2i bounds = new Rect2i(0, 0, 0, 0);
-
     protected WidgetStyle style;
-
-    protected boolean visible;
-
-    @Override
-    public boolean isVisible() {
-        return visible;
-    }
-
-    @Override
-    public void setVisible(boolean visible) {
-        this.visible = visible;
-    }
-
-    @Override
-    public Rect2i getLayoutBounds() {
-        return bounds;
-    }
-
-    @Override
-    public void setBounds(Rect2i bounds) {
-        this.bounds = bounds;
-    }
 
     @Override
     public void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
@@ -177,5 +155,32 @@ public class Container extends GuiWidget {
     @Override
     public void setStyle(WidgetStyle style) {
         this.style = style;
+    }
+
+    @Override
+    public Collection<GuiWidget> getChildren() {
+        return List.copyOf(children);
+    }
+
+    @Override
+    public void onVisibilityChanged() {
+        super.onVisibilityChanged();
+
+        for (var child : children) {
+            child.onVisibilityChanged();
+        }
+    }
+
+    public <T extends GuiWidget> T addChild(T child) {
+        children.add(child);
+        child.setParent(this);
+        return child;
+    }
+
+    public void removeChild(GuiWidget child) {
+        children.remove(child);
+        if (child.getParent() == this) {
+            child.setParent(null);
+        }
     }
 }

@@ -24,12 +24,16 @@ import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.api.parts.IPart;
 import appeng.api.stacks.GenericStack;
 import appeng.client.Point;
+import appeng.client.gui.anchoring.AnchorLine;
+import appeng.client.gui.anchoring.AnchorLineTarget;
+import appeng.client.gui.anchoring.AnchorType;
 import appeng.client.gui.layout.SlotGridLayout;
 import appeng.client.gui.style.BackgroundGenerator;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.SlotPosition;
 import appeng.client.gui.style.Text;
 import appeng.client.gui.style.TextAlignment;
+import appeng.client.gui.widgets.Container;
 import appeng.client.gui.widgets.ITickingWidget;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.OpenGuideButton;
@@ -126,6 +130,8 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
      */
     private final List<SavedSlotInfo> savedSlotInfos = new ArrayList<>();
 
+    private final Container mainContainer = new Container();
+
     public AEBaseScreen(T menu, Inventory playerInventory, Component title, ScreenStyle style) {
         super(menu, playerInventory, title);
 
@@ -134,8 +140,10 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
         this.font = Minecraft.getInstance().font;
 
         this.style = Objects.requireNonNull(style, "style");
-        this.widgets = new GuiRoot(style);
-        this.widgets.add("verticalToolbar", this.verticalToolbar = new VerticalButtonBar());
+        this.widgets = new GuiRoot(this, style);
+        this.widgets.add("mainContainer", mainContainer);
+        this.widgets.add("verticalToolbar", this.verticalToolbar = new VerticalButtonBar())
+                .getAnchors().setRight(new AnchorLine(new AnchorLineTarget.SiblingId("mainContainer"), AnchorType.LEFT));
 
         // Add a help-button to the vertical button bar
         this.helpButton = addToLeftToolbar(new OpenGuideButton(btn -> openHelp()));
@@ -152,7 +160,10 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
         if (!menu.getSlots(SlotSemantics.PLAYER_INVENTORY).isEmpty()
                 || !menu.getSlots(SlotSemantics.PLAYER_HOTBAR).isEmpty()) {
             playerInventoryPanel = new PlayerInventoryPanel(menu);
-            this.widgets.add("playerInventory", playerInventoryPanel);
+            playerInventoryPanel.setId("playerInventory");
+            playerInventoryPanel.getAnchors().setBottom(AnchorLine.parentBottom());
+            playerInventoryPanel.getAnchors().setHorizontalCenter(AnchorLine.parentHorizontalCenter());
+            this.mainContainer.addChild(playerInventoryPanel);
         } else {
             playerInventoryPanel = null;
         }
@@ -246,6 +257,13 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         this.updateBeforeRender();
         this.widgets.updateBeforeRender();
+
+        imageWidth = mainContainer.getWidth();
+        imageHeight = mainContainer.getHeight();
+        leftPos = (width - imageWidth) / 2;
+        topPos = (height - imageHeight) / 2;
+
+        // Re-Center the screens main content
 
         super.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
@@ -1047,5 +1065,9 @@ public abstract class AEBaseScreen<T extends AEBaseMenu> extends AbstractContain
             return itemIndex.get(itemId);
         }
         return null;
+    }
+
+    protected final Container getMainContainer() {
+        return mainContainer;
     }
 }

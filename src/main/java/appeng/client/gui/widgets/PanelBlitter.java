@@ -1,11 +1,11 @@
 package appeng.client.gui.widgets;
 
+import appeng.client.gui.style.Blitter;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.Rect2i;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import net.minecraft.client.gui.GuiGraphics;
-
-import appeng.client.gui.style.Blitter;
 
 public class PanelBlitter {
 
@@ -30,7 +30,7 @@ public class PanelBlitter {
     };
 
     // Top, Right, Bottom, Left
-    private static final Blitter[] EDGES = new Blitter[] {
+    private static final Blitter[] EDGES = new Blitter[]{
             FULL.copy().src(BORDER, 0, TILED_SIZE, BORDER),
             FULL.copy().src(SIZE - BORDER, BORDER, BORDER, TILED_SIZE),
             FULL.copy().src(BORDER, SIZE - BORDER, TILED_SIZE, BORDER),
@@ -44,6 +44,10 @@ public class PanelBlitter {
     private final List<Rectangle> processedRects = new ArrayList<>();
 
     public PanelBlitter() {
+    }
+
+    public void addBounds(Rect2i rect) {
+        addBounds(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
     }
 
     public void addBounds(int x, int y, int width, int height) {
@@ -319,7 +323,7 @@ public class PanelBlitter {
     }
 
     private static final class Rectangle {
-        CornerStyle[] corners = new CornerStyle[] {
+        CornerStyle[] corners = new CornerStyle[]{
                 CornerStyle.OUTER_TOP_LEFT,
                 CornerStyle.OUTER_TOP_RIGHT,
                 CornerStyle.OUTER_BOTTOM_RIGHT,

@@ -136,13 +136,8 @@ public class Scrollbar extends Container implements IScrollSource {
         return this.maxScroll - this.minScroll;
     }
 
-    public Scrollbar setHeight(int v) {
-        this.height = v;
-        return this;
-    }
-
     @Override
-    public void setBounds(Rect2i bounds) {
+    protected void onLayoutUpdated(Rect2i bounds) {
         this.displayX = bounds.getX();
         this.displayY = bounds.getY();
         if (bounds.getHeight() != 0) {

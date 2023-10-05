@@ -19,13 +19,17 @@
 package appeng.client.gui;
 
 import appeng.client.Point;
+import appeng.client.gui.layout.ContainerLayout;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.AETextField;
-import appeng.client.gui.widgets.BackgroundPanel;
+import appeng.client.gui.widgets.Container;
+import appeng.client.gui.widgets.Image;
 import appeng.client.gui.widgets.NumberEntryWidget;
+import appeng.client.gui.widgets.PanelBlitter;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.TabButton;
+import appeng.client.guidebook.document.LytSize;
 import appeng.core.localization.GuiText;
 import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.SwitchGuisPacket;
@@ -37,10 +41,11 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Button.OnPress;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +60,18 @@ import java.util.function.Consumer;
  */
 public class GuiRoot {
     private final ScreenStyle style;
-    private final Map<String, GuiWidget> widgets = new LinkedHashMap<>();
+    private final List<GuiWidget> widgets = new ArrayList<>();
+    private final Map<String, GuiWidget> widgetsById = new HashMap<>();
     private final Map<String, ResolvedTooltipArea> tooltips = new LinkedHashMap<>();
+    private final AEBaseScreen<?> screen;
 
-    public GuiRoot(ScreenStyle style) {
+    private LytSize mainPanelSize = LytSize.empty();
+    private Container mainContainer = new Container();
+
+    public GuiRoot(AEBaseScreen<?> screen, ScreenStyle style) {
+        this.screen = screen;
         this.style = style;
+        this.widgets.add(mainContainer);
     }
 
     public VanillaWidget add(AbstractWidget vanillaWidget) {
@@ -72,18 +84,21 @@ public class GuiRoot {
         return widget;
     }
 
-    public void add(GuiWidget widget) {
-        add(null, widget);
+    public <T extends GuiWidget> T add(T widget) {
+        return add(null, widget);
     }
 
-    public void add(@Nullable String id, GuiWidget widget) {
+    public <T extends GuiWidget> T add(@Nullable String id, T widget) {
 //        // Size the widget, as this doesn't change when the parent is resized
 //        WidgetStyle widgetStyle = style.getWidget(id);
 //        widget.setSize(widgetStyle.getWidth(), widgetStyle.getHeight());
 
 //        widget.setStyle(widgetStyle);
         widget.setId(id);
-        add(widget);
+        widgets.add(widget);
+        widget.setRoot(this);
+        widget.setParent(null);
+        return widget;
     }
 
     /**
@@ -135,24 +150,16 @@ public class GuiRoot {
      *
      * @param id The id used to look up the background image and bounds in the style.
      */
-    public void addBackgroundPanel(String id) {
+    public void addImage(String id) {
         var background = style.getImage(id).copy();
-        add(id, new BackgroundPanel(background));
+        add(id, new Image(background));
     }
 
     void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
         // For composite widgets, just position them. Positions for these widgets are generally relative to the dialog
         Rect2i relativeBounds = new Rect2i(0, 0, bounds.getWidth(), bounds.getHeight());
-        for (var entry : widgets.entrySet()) {
-            var widget = entry.getValue();
-            var widgetStyle = style.getWidget(entry.getKey());
-
-            var newBounds = widgetStyle.resolveBounds(
-                    relativeBounds,
-                    widget.getLayoutBounds().getWidth(),
-                    widget.getLayoutBounds().getHeight()
-            );
-            widget.setBounds(newBounds);
+        for (var widget : widgets) {
+            updateBeforeRender();
             widget.populateScreen(addWidget, bounds, screen);
         }
 
@@ -172,7 +179,7 @@ public class GuiRoot {
      * Tick {@link GuiWidget} instances that are not automatically ticked as part of being a normal widget.
      */
     public void tick() {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()) {
                 widget.tick();
             }
@@ -183,7 +190,15 @@ public class GuiRoot {
      * @see GuiWidget#updateBeforeRender()
      */
     public void updateBeforeRender() {
-        for (var widget : widgets.values()) {
+        var screenBounds = new Rect2i(
+                screen.getGuiLeft(), screen.getGuiTop(),
+                mainPanelSize.width(), mainPanelSize.height()
+        );
+
+        // Run layout update
+        ContainerLayout.layout(widgets, screenBounds);
+
+        for (var widget : widgets) {
             if (widget.isVisible()) {
                 widget.updateBeforeRender();
             }
@@ -194,7 +209,14 @@ public class GuiRoot {
      * @see GuiWidget#drawBackgroundLayer(GuiGraphics, Rect2i, Point)
      */
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
-        for (var widget : widgets.values()) {
+        var panelBlitter = new PanelBlitter();
+
+        for (var widget : widgets) {
+            widget.addPanels(panelBlitter);
+        }
+        panelBlitter.blit(guiGraphics, bounds.getX(), bounds.getY());
+
+        for (var widget : widgets) {
             if (widget.isVisible()) {
                 widget.drawBackgroundLayer(guiGraphics, bounds, mouse);
             }
@@ -205,7 +227,7 @@ public class GuiRoot {
      * @see GuiWidget#drawForegroundLayer(GuiGraphics, Rect2i, Point)
      */
     public void drawForegroundLayer(GuiGraphics poseStack, Rect2i bounds, Point mouse) {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()) {
                 widget.drawForegroundLayer(poseStack, bounds, mouse);
             }
@@ -216,7 +238,7 @@ public class GuiRoot {
      * @see GuiWidget#onMouseDown(Point, int)
      */
     public boolean onMouseDown(Point mousePos, int btn) {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()
                     && (widget.wantsAllMouseDownEvents() || mousePos.isIn(widget.getLayoutBounds()))
                     && widget.onMouseDown(mousePos, btn)) {
@@ -231,7 +253,7 @@ public class GuiRoot {
      * @see GuiWidget#onMouseUp(Point, int)
      */
     public boolean onMouseUp(Point mousePos, int btn) {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()
                     && (widget.wantsAllMouseUpEvents() || mousePos.isIn(widget.getLayoutBounds()))
                     && widget.onMouseUp(mousePos, btn)) {
@@ -246,7 +268,7 @@ public class GuiRoot {
      * @see GuiWidget#onMouseDrag(Point, int)
      */
     public boolean onMouseDrag(Point mousePos, int btn) {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible() && widget.onMouseDrag(mousePos, btn)) {
                 return true;
             }
@@ -260,7 +282,7 @@ public class GuiRoot {
      */
     boolean onMouseWheel(Point mousePos, double wheelDelta) {
         // First pass: dispatch wheel event to widgets the mouse is over
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()
                     && mousePos.isIn(widget.getLayoutBounds())
                     && widget.onMouseWheel(mousePos, wheelDelta)) {
@@ -269,7 +291,7 @@ public class GuiRoot {
         }
 
         // Second pass: send the event to capturing widgets
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()
                     && widget.wantsAllMouseWheelEvents()
                     && widget.onMouseWheel(mousePos, wheelDelta)) {
@@ -284,7 +306,7 @@ public class GuiRoot {
      * @see GuiWidget#addExclusionZones(List, Rect2i)
      */
     public void addExclusionZones(List<Rect2i> exclusionZones, Rect2i bounds) {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (widget.isVisible()) {
                 widget.addExclusionZones(exclusionZones, bounds);
             }
@@ -295,7 +317,6 @@ public class GuiRoot {
      * Adds a button named "openPriority" that opens the priority GUI for the current menu host.
      */
     public void addOpenPriorityButton() {
-        ItemRenderer itemRenderer = Minecraft.getInstance().getItemRenderer();
         add("openPriority", new TabButton(Icon.WRENCH, GuiText.Priority.text(),
                 btn -> openPriorityGui()));
     }
@@ -315,15 +336,15 @@ public class GuiRoot {
 
     @Nullable
     public Tooltip getTooltip(int mouseX, int mouseY) {
-        for (var c : this.widgets.values()) {
-            if (!c.isVisible()) {
+        for (var widget : this.widgets) {
+            if (!widget.isVisible() || !widget.hasLayout()) {
                 continue;
             }
 
-            Rect2i bounds = c.getLayoutBounds();
+            Rect2i bounds = widget.getLayoutBounds();
             if (mouseX >= bounds.getX() && mouseX < bounds.getX() + bounds.getWidth()
                     && mouseY >= bounds.getY() && mouseY < bounds.getY() + bounds.getHeight()) {
-                Tooltip tooltip = c.getTooltip(mouseX, mouseY);
+                Tooltip tooltip = widget.getTooltip(mouseX, mouseY);
                 if (tooltip != null) {
                     return tooltip;
                 }
@@ -343,7 +364,7 @@ public class GuiRoot {
      * Check if there's any content or compound widget at the given screen-relative mouse position.
      */
     public boolean hitTest(Point mousePos) {
-        for (var widget : widgets.values()) {
+        for (var widget : widgets) {
             if (mousePos.isIn(widget.getLayoutBounds())) {
                 return true;
             }
@@ -368,6 +389,32 @@ public class GuiRoot {
         searchField.setVisible(true);
         add(id, searchField);
         return searchField;
+    }
+
+    void addWidgetToTree(GuiWidget widget) {
+        var id = widget.getId();
+        if (id != null) {
+            if (widgetsById.containsKey(widget.getId())) {
+                throw new RuntimeException("Duplicate widget id " + widget.getId());
+            }
+            widgetsById.put(widget.getId(), widget);
+        }
+    }
+
+    void removeWidgetFromTree(GuiWidget widget) {
+        var id = widget.getId();
+        if (id != null) {
+            widgetsById.remove(widget.getId());
+        }
+    }
+
+    @Nullable
+    public GuiWidget getWidgetById(String id) {
+        return widgetsById.get(id);
+    }
+
+    public Container getMainContainer() {
+        return mainContainer;
     }
 
     private static class ResolvedTooltipArea {

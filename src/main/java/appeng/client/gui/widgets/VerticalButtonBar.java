@@ -58,6 +58,7 @@ public class VerticalButtonBar extends Container {
      */
     @Override
     public void updateBeforeRender() {
+        Rect2i bounds = getLayoutBounds();
         int currentY = bounds.getY() + MARGIN;
         int maxWidth = 0;
 

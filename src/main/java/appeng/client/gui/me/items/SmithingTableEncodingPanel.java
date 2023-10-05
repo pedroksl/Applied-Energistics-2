@@ -94,9 +94,10 @@ public class SmithingTableEncodingPanel extends EncodingModePanel {
     }
 
     @Override
-    public void setVisible(boolean visible) {
-        super.setVisible(visible);
+    public void onVisibilityChanged() {
+        super.onVisibilityChanged();
 
+        var visible = isVisibleIncludingParents();
         clearBtn.setVisibility(visible);
         substitutionsBtn.setVisibility(visible);
 

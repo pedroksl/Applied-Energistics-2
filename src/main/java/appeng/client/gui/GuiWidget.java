@@ -19,51 +19,95 @@
 package appeng.client.gui;
 
 import appeng.client.Point;
+import appeng.client.gui.layout.LayoutElement;
 import appeng.client.gui.style.WidgetStyle;
+import appeng.client.gui.widgets.Container;
+import appeng.client.gui.widgets.PanelBlitter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.MustBeInvokedByOverriders;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.List;
-import java.util.OptionalInt;
 import java.util.function.Consumer;
 
-public abstract class GuiWidget {
+public class GuiWidget extends LayoutElement {
     @Nullable
     private String id;
 
     @Nullable
     private GuiWidget parent;
 
-    public OptionalInt getFixedWidth() {
-        return OptionalInt.empty();
-    }
-
-    public OptionalInt getFixedHeight() {
-        return OptionalInt.empty();
-    }
-
     @Nullable
     private GuiRoot root;
 
-    private boolean layoutInvalid = true;
+    private boolean visible = true;
 
-    public void setRoot(@Nullable GuiRoot root) {
-
-        this.root = root;
-        this.layoutInvalid = true;
+    @Nullable
+    public GuiRoot getRoot() {
+        return root;
     }
 
-    public abstract boolean isVisible();
+    public void setRoot(@Nullable GuiRoot root) {
+        if (this.root == root) {
+            return;
+        }
 
-    public abstract void setVisible(boolean visible);
+        var oldRoot = this.root;
+        if (oldRoot != null) {
+            // Disassociate from old root
+            oldRoot.removeWidgetFromTree(this);
+        }
+        this.root = root;
+        if (this.root != null) {
+            this.root.addWidgetToTree(this);
+        }
+        invalidateLayout();
 
-    /**
-     * @return The area occupied by this widget relative to the main dialog bounds.
-     */
-    public abstract Rect2i getLayoutBounds();
+        // Do it for all children
+        for (var child : getChildren()) {
+            child.setRoot(root);
+        }
+    }
+
+    public Collection<GuiWidget> getChildren() {
+        return List.of();
+    }
+
+
+    @Override
+    protected Collection<? extends LayoutElement> getLayoutChildren() {
+        return getChildren();
+    }
+
+    public final boolean isVisibleIncludingParents() {
+        for (var current = this; current != null; current = current.getParent()) {
+            if (!current.isVisible()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public final boolean isVisible() {
+        return visible;
+    }
+
+    public final void setVisible(boolean visible) {
+        if (visible != this.visible) {
+            this.visible = visible;
+            onVisibilityChanged();
+        }
+    }
+
+    @ApiStatus.OverrideOnly
+    @MustBeInvokedByOverriders
+    public void onVisibilityChanged() {
+    }
 
     @Nullable
     public final GuiWidget getParent() {
@@ -71,19 +115,18 @@ public abstract class GuiWidget {
     }
 
     public void setParent(@Nullable GuiWidget parent) {
-        this.parent = parent;
+        if (parent != this.parent) {
+            var oldParent = this.parent;
+            this.parent = parent;
+            if (oldParent instanceof Container container) {
+                container.removeChild(parent);
+            }
+        }
     }
 
-    public abstract void setBounds(Rect2i bounds);
-
-    public void setPosition(int x, int y) {
-        var currentBounds = getLayoutBounds();
-        setBounds(new Rect2i(
-                x,
-                y,
-                currentBounds.getWidth(),
-                currentBounds.getHeight()
-        ));
+    @Override
+    protected LayoutElement getLayoutParent() {
+        return parent;
     }
 
     /**
@@ -260,4 +303,18 @@ public abstract class GuiWidget {
     public void blur() {
     }
 
+    public void addPanels(PanelBlitter panelBlitter) {
+        for (var child : getChildren()) {
+            child.addPanels(panelBlitter);
+        }
+    }
+
+    @Override
+    public String toString() {
+        if (id != null) {
+            return getClass().getSimpleName() + "[#" + id + "]";
+        } else {
+            return super.toString();
+        }
+    }
 }

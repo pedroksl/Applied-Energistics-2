@@ -78,6 +78,7 @@ public class ProcessingEncodingPanel extends EncodingModePanel {
     }
 
     private void updateTooltipVisibility() {
+        var visible = isVisibleIncludingParents();
         widgets.setTooltipAreaEnabled("processing-primary-output", visible && scrollbar.getCurrentScroll() == 0);
         widgets.setTooltipAreaEnabled("processing-optional-output1", visible && scrollbar.getCurrentScroll() > 0);
         widgets.setTooltipAreaEnabled("processing-optional-output2", visible);
@@ -95,9 +96,10 @@ public class ProcessingEncodingPanel extends EncodingModePanel {
     }
 
     @Override
-    public void setVisible(boolean visible) {
-        super.setVisible(visible);
+    public void onVisibilityChanged() {
+        super.onVisibilityChanged();
 
+        var visible = isVisibleIncludingParents();
         scrollbar.setVisible(visible);
         clearBtn.setVisibility(visible);
         cycleOutputBtn.setVisibility(menu.canCycleProcessingOutputs());

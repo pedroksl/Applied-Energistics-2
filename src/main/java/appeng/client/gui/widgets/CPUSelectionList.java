@@ -116,8 +116,8 @@ public class CPUSelectionList extends Container {
 
     @Nullable
     private CraftingStatusMenu.CraftingCpuListEntry hitTestCpu(Point mousePos) {
-        var relX = mousePos.getX() - bounds.getX();
-        var relY = mousePos.getY() - bounds.getY();
+        var relX = mousePos.getX() - this.getLayoutBounds().getX();
+        var relY = mousePos.getY() - this.getLayoutBounds().getY();
         relX -= 9;
         if (relX < 0 || relX >= buttonBg.getSrcWidth()) {
             return null;
@@ -150,13 +150,13 @@ public class CPUSelectionList extends Container {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
-        var x = bounds.getX() + this.bounds.getX();
-        var y = bounds.getY() + this.bounds.getY();
+        var x = bounds.getX() + this.getLayoutBounds().getX();
+        var y = bounds.getY() + this.getLayoutBounds().getY();
         background.dest(
                 x,
                 y,
-                this.bounds.getWidth(),
-                this.bounds.getHeight()).blit(guiGraphics);
+                this.getLayoutBounds().getWidth(),
+                this.getLayoutBounds().getHeight()).blit(guiGraphics);
 
         // Move to first button
         x += 9;

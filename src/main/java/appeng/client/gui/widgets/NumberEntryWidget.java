@@ -166,8 +166,8 @@ public class NumberEntryWidget extends Container {
 
     @Override
     public void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
-        int left = bounds.getX() + this.bounds.getX();
-        int top = bounds.getY() + this.bounds.getY();
+        int left = bounds.getX() + getLayoutBounds().getX();
+        int top = bounds.getY() + getLayoutBounds().getY();
 
         List<Button> buttons = new ArrayList<>(9);
 

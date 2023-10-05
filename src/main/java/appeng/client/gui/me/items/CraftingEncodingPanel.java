@@ -107,8 +107,8 @@ public class CraftingEncodingPanel extends EncodingModePanel {
     }
 
     @Override
-    public void setVisible(boolean visible) {
-        super.setVisible(visible);
+    public void onVisibilityChanged() {
+        var visible = isVisibleIncludingParents();
 
         clearBtn.setVisibility(visible);
         substitutionsBtn.setVisibility(visible);

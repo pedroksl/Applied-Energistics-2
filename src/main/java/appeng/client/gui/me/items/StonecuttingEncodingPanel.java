@@ -166,8 +166,10 @@ public final class StonecuttingEncodingPanel extends EncodingModePanel {
     }
 
     @Override
-    public void setVisible(boolean visible) {
-        super.setVisible(visible);
+    public void onVisibilityChanged() {
+        super.onVisibilityChanged();
+
+        var visible = isVisibleIncludingParents();
         scrollbar.setVisible(visible);
         screen.setSlotsHidden(SlotSemantics.STONECUTTING_INPUT, !visible);
     }
