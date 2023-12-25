@@ -23,6 +23,7 @@ import appeng.client.gui.layout.LayoutElement;
 import appeng.client.gui.style.WidgetStyle;
 import appeng.client.gui.widgets.Container;
 import appeng.client.gui.widgets.PanelBlitter;
+import appeng.client.guidebook.document.LytSize;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
@@ -40,7 +41,7 @@ public class GuiWidget extends LayoutElement {
     private String id;
 
     @Nullable
-    private GuiWidget parent;
+    private Container parent;
 
     @Nullable
     private GuiRoot root;
@@ -110,16 +111,16 @@ public class GuiWidget extends LayoutElement {
     }
 
     @Nullable
-    public final GuiWidget getParent() {
+    public final Container getParent() {
         return parent;
     }
 
-    public void setParent(@Nullable GuiWidget parent) {
+    public void setParent(@Nullable Container parent) {
         if (parent != this.parent) {
             var oldParent = this.parent;
             this.parent = parent;
-            if (oldParent instanceof Container container) {
-                container.removeChild(parent);
+            if (oldParent != null) {
+                oldParent.removeChild(parent);
             }
         }
     }
@@ -317,4 +318,5 @@ public class GuiWidget extends LayoutElement {
             return super.toString();
         }
     }
+
 }

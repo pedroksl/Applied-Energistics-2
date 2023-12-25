@@ -20,6 +20,7 @@ package appeng.client.gui;
 
 import appeng.client.Point;
 import appeng.client.gui.layout.ContainerLayout;
+import appeng.client.gui.layout.LayoutRoot;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.AETextField;
@@ -58,7 +59,7 @@ import java.util.function.Consumer;
  * This class sources the positioning and sizing for widgets from the {@link ScreenStyle}, and correlates between the
  * screen's JSON file and the widget using a string id.
  */
-public class GuiRoot {
+public class GuiRoot extends LayoutRoot {
     private final ScreenStyle style;
     private final List<GuiWidget> widgets = new ArrayList<>();
     private final Map<String, GuiWidget> widgetsById = new HashMap<>();

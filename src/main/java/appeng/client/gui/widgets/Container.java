@@ -3,14 +3,14 @@ package appeng.client.gui.widgets;
 import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.GuiWidget;
-import appeng.client.gui.layout.LayoutElement;
+import appeng.client.gui.layout.Insets;
+import appeng.client.gui.layout.LayoutManager;
 import appeng.client.gui.style.WidgetStyle;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.renderer.Rect2i;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -18,6 +18,8 @@ public class Container extends GuiWidget {
     protected final List<GuiWidget> children = new ArrayList<>();
 
     protected WidgetStyle style;
+    private LayoutManager layout;
+    private Insets insets = new Insets(0, 0, 0, 0);
 
     @Override
     public void populateScreen(Consumer<AbstractWidget> addWidget, Rect2i bounds, AEBaseScreen<?> screen) {
@@ -158,7 +160,7 @@ public class Container extends GuiWidget {
     }
 
     @Override
-    public Collection<GuiWidget> getChildren() {
+    public List<GuiWidget> getChildren() {
         return List.copyOf(children);
     }
 
@@ -182,5 +184,33 @@ public class Container extends GuiWidget {
         if (child.getParent() == this) {
             child.setParent(null);
         }
+    }
+
+    @Override
+    protected void doLayout() {
+        if (layout != null) {
+            layout.layoutContainer(this);
+        }
+
+        for (int i = 0; i < children.size(); i++) {
+            var child = children.get(i);
+            child.ensureLayout();
+        }
+    }
+
+    public LayoutManager getLayout() {
+        return layout;
+    }
+
+    public void setLayout(LayoutManager layout) {
+        this.layout = layout;
+    }
+
+    public Insets getInsets() {
+        return insets;
+    }
+
+    public void setInsets(Insets insets) {
+        this.insets = insets;
     }
 }

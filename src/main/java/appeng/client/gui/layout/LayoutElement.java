@@ -4,6 +4,7 @@ import appeng.client.gui.anchoring.AnchorAxis;
 import appeng.client.gui.anchoring.AnchorLine;
 import appeng.client.gui.anchoring.AnchorLineTarget;
 import appeng.client.gui.anchoring.Anchors;
+import appeng.client.guidebook.document.LytSize;
 import net.minecraft.client.renderer.Rect2i;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,6 +13,7 @@ import java.util.OptionalInt;
 
 public abstract class LayoutElement {
 
+    // Current position relative to parent, result of layout
     protected int x;
 
     protected int y;
@@ -19,6 +21,16 @@ public abstract class LayoutElement {
     protected int width;
 
     protected int height;
+
+    // Layout constraints
+    private int minWidth;
+    private int maxWidth;
+    private int minHeight;
+    private int maxHeight;
+    private int preferredWidth;
+    private int preferredHeight;
+
+    private LayoutRoot root;
 
     private final Anchors anchors = new Anchors();
 
@@ -41,7 +53,27 @@ public abstract class LayoutElement {
     }
 
     protected final void invalidateLayout() {
-        this.layoutInvalid = true;
+        if (!this.layoutInvalid) {
+            this.layoutInvalid = true;
+            if (root != null) {
+                root.elementsToUpdate.add(this);
+            }
+        }
+    }
+
+    public final void ensureLayout() {
+        updateLayout();
+    }
+
+    protected final void updateLayout() {
+        if (layoutInvalid) {
+            layoutInvalid = false;
+
+            doLayout();
+        }
+    }
+
+    protected void doLayout() {
     }
 
     /**
@@ -130,5 +162,106 @@ public abstract class LayoutElement {
 
     private static boolean refersToParent(@Nullable AnchorLine line) {
         return line != null && line.element() instanceof AnchorLineTarget.Parent;
+    }
+
+    public int getImplicitWidth() {
+        return 0;
+    }
+
+    public int getImplicitHeight() {
+        return 0;
+    }
+
+    public final int getPreferredWidth() {
+        return preferredWidth;
+    }
+
+    public final int getPreferredHeight() {
+        return preferredHeight;
+    }
+
+    public final int getMinWidth() {
+        return minWidth;
+    }
+
+    public final int getMaxWidth() {
+        return maxWidth;
+    }
+
+    public final int getMinHeight() {
+        return minHeight;
+    }
+
+    public final int getMaxHeight() {
+        return maxHeight;
+    }
+
+    public final void setMinWidth(int minWidth) {
+        minWidth = Math.max(0, minWidth);
+        if (minWidth != this.minWidth) {
+            this.minWidth = minWidth;
+            invalidateLayout();
+        }
+    }
+
+    public final void setMaxWidth(int maxWidth) {
+        maxWidth = Math.max(0, maxWidth);
+        if (maxWidth != this.maxWidth) {
+            this.maxWidth = maxWidth;
+            invalidateLayout();
+        }
+    }
+
+    public final void setMinHeight(int minHeight) {
+        minHeight = Math.max(0, minHeight);
+        if (minHeight != this.minHeight) {
+            this.minHeight = minHeight;
+            invalidateLayout();
+        }
+    }
+
+    public final void setMaxHeight(int maxHeight) {
+        maxHeight = Math.max(0, maxHeight);
+        if (maxHeight != this.maxHeight) {
+            this.maxHeight = maxHeight;
+            invalidateLayout();
+        }
+    }
+
+    public final void setPreferredWidth(int preferredWidth) {
+        preferredWidth = Math.max(0, preferredWidth);
+        if (preferredWidth != this.preferredWidth) {
+            this.preferredWidth = preferredWidth;
+            invalidateLayout();
+        }
+    }
+
+    public final void setPreferredHeight(int preferredHeight) {
+        preferredHeight = Math.max(0, preferredHeight);
+        if (preferredHeight != this.preferredHeight) {
+            this.preferredHeight = preferredHeight;
+            invalidateLayout();
+        }
+    }
+
+    public abstract boolean isVisible();
+
+    public LytSize getSize() {
+        return new LytSize(width, height);
+    }
+
+    public void setBounds(int x, int y, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    public LytSize getMinimumSize() {
+        return new LytSize(minWidth, minHeight);
+    }
+
+    public LytSize getPreferredSize() {
+        return getMinimumSize();
     }
 }
